@@ -15,9 +15,13 @@ public final class ApplicationService {
     private final NotificationService notificationService;
 
     public ApplicationService() {
-        this.applicationDao = new ApplicationDaoPg();
-        this.studentDao = new StudentDaoPg();
-        this.notificationService = new SimpleNotificationService();
+        this(new ApplicationDaoPg(), new StudentDaoPg(), new SimpleNotificationService());
+    }
+
+    public ApplicationService(ApplicationDao applicationDao, StudentDao studentDao, NotificationService notificationService) {
+        this.applicationDao = applicationDao;
+        this.studentDao = studentDao;
+        this.notificationService = notificationService;
     }
 
     public void approve(long applicationId) {

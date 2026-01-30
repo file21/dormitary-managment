@@ -14,9 +14,13 @@ public final class ProctorService {
     private final NotificationService notificationService;
 
     public ProctorService() {
-        this.applicationDao = new ApplicationDaoPg();
-        this.allocationDao = new AllocationDaoPg();
-        this.notificationService = new SimpleNotificationService();
+        this(new ApplicationDaoPg(), new AllocationDaoPg(), new SimpleNotificationService());
+    }
+
+    public ProctorService(ApplicationDao applicationDao, AllocationDao allocationDao, NotificationService notificationService) {
+        this.applicationDao = applicationDao;
+        this.allocationDao = allocationDao;
+        this.notificationService = notificationService;
     }
 
     public void checkIn(long applicationId, long proctorUserId, long bedId, String roomNumber) {
