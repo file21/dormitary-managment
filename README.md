@@ -1,15 +1,34 @@
-# Dorm Application Management (JavaFX + PostgreSQL)
+# Dormitory Management System
 
-## Run
-1. Configure environment variables :
-- DB_URL=jdbc:postgresql://localhost:5432/dormdb
-- DB_USER=postgres
-- DB_PASS=postgres
+Simple JavaFX + MySQL app for dormitory allocation management.
 
-2. Create DB schema:
-- Run `src/main/resources/sql/schema.sql`
+## Setup
 
-3. Run the app:
-```bash
-mvn javafx:run
+1. Create MySQL database:
+```sql
+CREATE DATABASE dormdb;
 ```
+
+2. Load schema:
+```bash
+mysql -u root dormdb < src/main/resources/sql/schema_mysql.sql
+```
+
+3. Run app:
+```bash
+mvn clean javafx:run
+```
+
+## Login Credentials
+
+- Admin: `admin` / `admin123`
+- Proctor: `proctor1` / `pass123`
+- Student: `student1` / `pass123`
+
+## Project Structure
+
+- `model/` - Data classes (User, Student, DormApplication, etc.)
+- `dao/` - Database access layer
+- `service/` - Business logic
+- `ui/` - JavaFX controllers and views
+- `util/` - Helpers (DB connection, password hashing)
