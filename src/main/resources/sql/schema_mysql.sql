@@ -331,18 +331,17 @@ INSERT INTO application_window (window_code, open_at, close_at, active) VALUES
 ('2024-MAIN', '2024-01-01 00:00:00', '2024-01-31 23:59:59', TRUE),
 ('2024-RESIT', '2024-06-01 00:00:00', '2024-06-30 23:59:59', FALSE);
 
--- Create default admin user (password: admin123, hashed with bcrypt)
--- Note: Replace with actual bcrypt hash in production
+-- Create default admin user (password: admin123, hashed with SHA-256 Base64)
 INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('admin', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4a', 'ADMIN', TRUE);
+('admin', 'JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=', 'ADMIN', TRUE);
 
--- Create sample proctor (password: proctor123)
+-- Create sample proctor (password: pass123, hashed with SHA-256 Base64)
 INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('proctor1', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4b', 'PROCTOR', TRUE);
+('proctor1', 'm4dppKdClZotApjDb7cGI/LfrNqENiN98I2N/Vs3N0w=', 'PROCTOR', TRUE);
 
--- Create sample student (password: student123)
+-- Create sample student (password: pass123, hashed with SHA-256 Base64)
 INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('student1', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4c', 'STUDENT', TRUE);
+('student1', 'm4dppKdClZotApjDb7cGI/LfrNqENiN98I2N/Vs3N0w=', 'STUDENT', TRUE);
 
 -- Add student profile
 INSERT INTO student_profile (user_id, full_name, aau_id, department, year_of_study, category, gender) VALUES 

@@ -15,6 +15,10 @@ public final class Validation {
         if (!condition) throw new IllegalArgumentException(message);
     }
 
+    public static void requireNotBlank(String value, String message) {
+        require(value != null && !value.trim().isEmpty(), message);
+    }
+
     public static boolean isValidAauId(String aauId) {
         if (aauId == null) return false;
         return AAU_ID.matcher(aauId.trim()).matches();
