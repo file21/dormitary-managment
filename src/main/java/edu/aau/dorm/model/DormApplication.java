@@ -3,22 +3,28 @@ package edu.aau.dorm.model;
 import java.time.Instant;
 
 /**
- * Dorm application submitted by a student during an application window.
+ * ENCAPSULATION DEMO: All fields are private and final.
+ * Data can only be read via getter methods - no setter methods.
+ * This is immutable encapsulation - very safe!
+ * 
+ * Demonstrates: Encapsulation (private fields with getters only)
  */
 public final class DormApplication extends BaseEntity {
 
-    private final long studentUserId;
-    private final String windowCode;
-    private final SponsorshipType sponsorshipType;
-    private final boolean disability;
-    private final String department;
-    private final String campusPreference;
-    private final Double distanceKm;
+    // ENCAPSULATION: Private fields - hidden from outside world
+    private final long studentUserId;        // Which student submitted
+    private final String windowCode;         // Application window ID
+    private final SponsorshipType sponsorshipType;  // Scholarship type
+    private final boolean disability;        // Has disability?
+    private final String department;         // Student's department
+    private final String campusPreference;   // Preferred campus
+    private final Double distanceKm;         // Distance from campus
 
-    private final ApplicationStatus status;
-    private final int score;
-    private final Instant submittedAt;
-    private final Instant updatedAt;
+    // Status fields - show where in process
+    private final ApplicationStatus status;  // Current application status
+    private final int score;                 // Priority score
+    private final Instant submittedAt;       // When submitted
+    private final Instant updatedAt;         // Last updated
 
     public DormApplication(
             long id,

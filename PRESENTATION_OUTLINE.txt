@@ -1,0 +1,374 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║           DORMITORY MANAGEMENT SYSTEM - PRESENTATION OUTLINE               ║
+║                        (15 Minutes Total)                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                          OPENING (1 minute)                                │
+└────────────────────────────────────────────────────────────────────────────┘
+
+[ 00:00-00:30 ]
+  ➤ "Good morning/afternoon. Today I'm presenting a Dormitory Management System
+     that demonstrates Object-Oriented Programming and SOLID principles."
+     
+  ➤ "This is a real, working JavaFX application with a database backend.
+     More importantly, it's a teaching tool to show how professional code is written."
+     
+  ➤ "I'll show you the code, explain the OOP design, and then run it live."
+
+[ 00:30-01:00 ]
+  ➤ "Let me start by showing the project structure."
+  
+  ➤ Action: Open IDE, show file structure
+     ```
+     src/main/java/edu/aau/dorm/
+     ├── model/       (User, Student, Admin, Proctor, Bed, etc.)
+     ├── service/     (AuthService, ProctorService, ApplicationService)
+     ├── dao/         (Data Access Objects - UserDao, ApplicationDao, etc.)
+     ├── ui/
+     │   └── controller/ (LoginController, StudentDashboardController, etc.)
+     └── util/        (Database, PasswordHasher, etc.)
+     ```
+  
+  ➤ Say: "See how we've separated concerns into different packages?
+           Model for data, Service for business logic, DAO for database,
+           UI for presentation. This is a key design principle we'll discuss."
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│              PRINCIPLE 1: ENCAPSULATION (2 minutes)                        │
+│                      [ 01:00 - 03:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ➤ "Let's start with ENCAPSULATION - the first OOP principle."
+  
+  ➤ Action: Open model/User.java
+  
+  ➤ Point to these lines:
+     ```java
+     private final String username;           ← Private!
+     private final String passwordHash;       ← Private!
+     private final Role role;                 ← Private!
+     private final boolean active;            ← Private!
+     
+     public String username() { return username; }           ← Getter only
+     public String passwordHash() { return passwordHash; }   ← Getter only
+     ```
+  
+  ➤ Say: "Look at the fields - they're all PRIVATE. That means code outside
+           this class CANNOT access them directly. They can only READ them
+           through these getter methods. Notice - there are NO SETTERS.
+           
+           Why is this important? Because if someone sets username to null,
+           the object is broken. By keeping fields private and providing
+           controlled access, we prevent invalid states.
+           
+           This is ENCAPSULATION - hiding your data and controlling access."
+  
+  ➤ Show Bed.java for another example of immutability
+  
+  ➤ Transition: "Now, all these user types (Student, Admin, Proctor) share
+                  common properties. We could copy this code three times...
+                  but that's bad. Instead, we use INHERITANCE."
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│              PRINCIPLE 2: INHERITANCE (2 minutes)                          │
+│                      [ 03:00 - 05:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ➤ "The next principle is INHERITANCE - code reuse through hierarchy."
+  
+  ➤ Action: Show four files side by side (or quickly switch between)
+     - model/User.java (parent)
+     - model/Student.java (child)
+     - model/Admin.java (child)
+     - model/Proctor.java (child)
+  
+  ➤ Point out:
+     ```java
+     // User.java - Parent class
+     public abstract class User extends BaseEntity { ... }
+     
+     // Student.java - Child class
+     public class Student extends User { ... }
+     
+     // Admin.java - Child class
+     public class Admin extends User { ... }
+     
+     // Proctor.java - Child class
+     public class Proctor extends User { ... }
+     ```
+  
+  ➤ Say: "See how Student, Admin, and Proctor all EXTEND User?
+           This means they automatically inherit all User properties:
+           username, passwordHash, role, active status, created time.
+           
+           Student also has its own properties: fullName, aauId, department.
+           
+           Why is this good? Because we defined username and password ONCE,
+           in the User class. Not three times. No duplication.
+           
+           This is INHERITANCE - sharing common behavior through hierarchy."
+  
+  ➤ Reference VISUAL_DIAGRAMS.md if asked for visual explanation
+  
+  ➤ Transition: "These classes hide complexity behind simple interfaces.
+                  Let me show you ABSTRACTION next."
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│              PRINCIPLE 3: ABSTRACTION & POLYMORPHISM (2 minutes)           │
+│                      [ 05:00 - 07:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ➤ "Now let's look at ABSTRACTION - hiding complexity behind interfaces."
+  
+  ➤ Action: Open service/ScoringPolicy.java
+  
+  ➤ Show:
+     ```java
+     public interface ScoringPolicy {
+         int score(Student student, DormApplication app);
+     }
+     ```
+  
+  ➤ Say: "This is an interface. It doesn't SAY HOW to calculate a score.
+           It just says: 'You give me a student and application, I'll give
+           you an integer score back.'
+           
+           The HOW is hidden. Different implementations can calculate
+           differently. Let me show you."
+  
+  ➤ Action: Open service/DefaultScoringPolicy.java
+  
+  ➤ Point to implementation:
+     ```java
+     public class DefaultScoringPolicy implements ScoringPolicy {
+         @Override
+         public int score(Student student, DormApplication app) {
+             // Complex calculation hidden here
+             return baseScore + bonuses;
+         }
+     }
+     ```
+  
+  ➤ Say: "One implementation. But you could create another that scores
+           differently - a SpecialScoringPolicy for disabled students, for
+           example. All they need to do is implement the same interface.
+           
+           This is POLYMORPHISM - many forms of the same interface.
+           And it's ABSTRACTION - the complexity is hidden."
+  
+  ➤ Transition: "The real benefit comes when you look at the service layer.
+                  That's where we apply SOLID principles."
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│            SOLID PRINCIPLES - CODE ORGANIZATION (2 minutes)                │
+│                      [ 07:00 - 09:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ➤ "Now let's look at how we organize these classes - SOLID principles."
+  
+  ➤ Action: Open service/ProctorService.java
+  
+  ➤ Show the constructor and fields:
+     ```java
+     public class ProctorService {
+         private final ApplicationDao applicationDao;
+         private final AllocationDao allocationDao;
+         private final NotificationService notificationService;
+         
+         public ProctorService(ApplicationDao applicationDao,
+                              AllocationDao allocationDao,
+                              NotificationService notificationService) {
+             this.applicationDao = applicationDao;
+             this.allocationDao = allocationDao;
+             this.notificationService = notificationService;
+         }
+     }
+     ```
+  
+  ➤ Say: "Notice three things here:
+     
+     1. SINGLE RESPONSIBILITY (S in SOLID)
+        This class ONLY handles check-in and check-out operations.
+        It doesn't handle authentication, notifications, or anything else.
+        One class = one job = easy to modify.
+     
+     2. DEPENDENCY INVERSION (D in SOLID)
+        It receives INTERFACES as dependencies: ApplicationDao,
+        AllocationDao, NotificationService.
+        NOT concrete classes like ApplicationDaoPg.
+        
+        Why? Because if we later switch from MySQL to PostgreSQL,
+        we just pass a different implementation. The service code
+        NEVER changes.
+     
+     3. ENCAPSULATION
+        The dependencies are private final - can't be changed from outside."
+  
+  ➤ Show the checkIn method:
+     ```java
+     public void checkIn(long applicationId, long bedId, String roomNumber) {
+         DormApplication a = applicationDao.getById(applicationId);
+         if (a.status() != ApplicationStatus.ACCEPTED) {
+             throw new IllegalStateException("...");
+         }
+         allocationDao.allocate(applicationId, bedId, proctorUserId, roomNumber);
+         applicationDao.setStatus(applicationId, ApplicationStatus.CHECKED_IN);
+         notificationService.notifyUser(a.studentUserId(), "Checked in", "...");
+     }
+     ```
+  
+  ➤ Say: "Look at the clean separation:
+           - Get data (using DAO interface)
+           - Validate business rule
+           - Update allocations (using DAO interface)
+           - Send notification (using service interface)
+     
+           Notice it uses interfaces for ALL external dependencies.
+           This makes it loosely coupled and testable."
+  
+  ➤ Transition: "This is professional-grade code design. Now let's see it
+                  actually work in the application."
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                   RUNNING THE APPLICATION (5 minutes)                      │
+│                      [ 09:00 - 14:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  ➤ "Now let me show you this application actually running."
+  
+  ➤ Action: Open terminal, run: mvn javafx:run
+  
+  ➤ Wait for application to start (typically 10-15 seconds)
+  
+  ┌─ STEP 1: Login as Student (1 minute)
+  │
+  │  ➤ Login with: username=student1, password=password123
+  │  
+  │  ➤ Say: "Notice the login validates our input. It uses the AuthService
+  │          which depends on UserDao interface. Same code works whether
+  │          we're using MySQL or PostgreSQL."
+  │  
+  │  ➤ Show student dashboard
+  │  
+  │  ➤ Say: "The student can see available dormitories and apply for housing.
+  │          Each user role gets different screens based on their role."
+  │
+  └─
+
+  ┌─ STEP 2: Logout and Login as Admin (1.5 minutes)
+  │
+  │  ➤ Action: Logout from student view
+  │  
+  │  ➤ Login with: username=admin1, password=password123
+  │  
+  │  ➤ Show admin dashboard
+  │  
+  │  ➤ Say: "Admin can review applications, approve or reject them, and assign
+  │          dormitories. Notice how same database supports three different
+  │          user types with different features. That's the power of
+  │          role-based design."
+  │
+  └─
+
+  ┌─ STEP 3: Logout and Login as Proctor (1.5 minutes)
+  │
+  │  ➤ Action: Logout from admin view
+  │  
+  │  ➤ Login with: username=proctor1, password=password123
+  │  
+  │  ➤ Show proctor dashboard
+  │  
+  │  ➤ Say: "Proctor can check in students, manage dormitory capacity.
+  │          Same application, same database, but the UI and permissions
+  │          are based on the role. This comes from our User inheritance
+  │          hierarchy we looked at earlier."
+  │
+  │  ➤ Optional: If time permits, show one complete workflow
+  │             (e.g., student applies → admin approves → proctor checks in)
+  │
+  └─
+  
+  ➤ Transition to Q&A
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         Q&A PREPARATION (1 minute)                         │
+│                      [ 14:00 - 15:00 ]                                     │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  "Thank you for the demonstration. I'm happy to answer any questions about
+   the design, the code, or the OOP principles demonstrated."
+
+  Common Questions (with answers):
+
+  Q: "Why make everything so complicated? Why not just put it all in one class?"
+  A: Use TALKING_POINTS.md - Principle 1 "When Evaluator Asks About
+     Encapsulation" section. "Because keeping data private prevents bugs..."
+
+  Q: "How would you add a new feature?"
+  A: Use TALKING_POINTS.md - "How would you add a new feature?" section.
+     "Create a new class implementing the same interface, no changes needed."
+
+  Q: "Why interfaces instead of concrete classes?"
+  A: Use TALKING_POINTS.md - Dependency Inversion section.
+     "Loose coupling - can swap implementations without changing code."
+
+  Q: "Isn't this over-engineered?"
+  A: "This is the MINIMUM good design. Real projects are much more complex.
+      These principles are industry standard."
+
+  Q: "Can you explain [principle] more?"
+  A: Reference OOP_EXPLAINED.md or draw diagram from VISUAL_DIAGRAMS.md.
+
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        CLOSING THOUGHTS                                    │
+└────────────────────────────────────────────────────────────────────────────┘
+
+  "To summarize:
+  
+   • ENCAPSULATION keeps your data safe with private fields
+   • INHERITANCE avoids code duplication through hierarchy
+   • ABSTRACTION hides complexity behind interfaces
+   • POLYMORPHISM makes code flexible and extensible
+   • SOLID principles organize code into clean, maintainable packages
+   
+   This design means:
+   - Easy to understand ("Where do I go to change X?")
+   - Easy to modify ("Can change one thing without breaking everything else")
+   - Easy to extend ("Just add a new class implementing the interface")
+   - Easy to test ("Can use mock objects instead of real database")
+   
+   These aren't optional design patterns - they're industry standard practices
+   for professional software development. Learning them now gives you a huge
+   advantage in your career."
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                        TIMING SUMMARY                                      ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║ 00:00-00:30   Introduction & Architecture Overview               (0:30)    ║
+║ 00:30-01:00   Project Structure                                  (0:30)    ║
+║ 01:00-03:00   Encapsulation (User.java, Bed.java)                (2:00)    ║
+║ 03:00-05:00   Inheritance (User → Student/Admin/Proctor)         (2:00)    ║
+║ 05:00-07:00   Abstraction & Polymorphism (ScoringPolicy)         (2:00)    ║
+║ 07:00-09:00   SOLID Principles (ProctorService)                  (2:00)    ║
+║ 09:00-14:00   Running Application (3 logins, features)           (5:00)    ║
+║ 14:00-15:00   Q&A                                                (1:00)    ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║ TOTAL                                                            15:00     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+KEY TIPS:
+✓ Go slow - give evaluators time to understand
+✓ Point to specific lines - be precise
+✓ Use analogies - "Private fields are like a locked box"
+✓ Show consequences - "If fields were public, someone could break the object"
+✓ Emphasize benefits - "This makes code maintainable for years"
+✓ Connect to practice - "This is how real companies write code"
+
+REFERENCES DURING PRESENTATION:
+- TALKING_POINTS.md - For what to say
+- OOP_EXPLAINED.md - For deep explanations
+- VISUAL_DIAGRAMS.md - For visual aids
+- DEMO_CHECKLIST.md - For file locations
+
+Good luck! You've got this! 🎓
