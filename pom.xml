@@ -12,7 +12,6 @@
     <maven.compiler.release>21</maven.compiler.release>
     <javafx.version>25.0.2</javafx.version>
     <hikaricp.version>6.3.3</hikaricp.version>
-    <pgjdbc.version>42.7.9</pgjdbc.version>
   </properties>
 
   <dependencies>
@@ -27,10 +26,11 @@
       <version>${javafx.version}</version>
     </dependency>
 
+    <!-- MySQL JDBC Driver -->
     <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${pgjdbc.version}</version>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>8.0.33</version>
     </dependency>
 
     <dependency>
