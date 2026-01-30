@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="edu.aau.dorm.ui.DashboardController" spacing="12">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <HBox spacing="20">
+        <Label fx:id="welcomeLabel" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+        <Label fx:id="roleLabel"/>
+    </HBox>
+
+    <Label text="Dorm Applications" style="-fx-font-weight: bold;"/>
+
+    <TableView fx:id="applicationTable" prefHeight="220">
+        <columns>
+            <TableColumn fx:id="idColumn" text="ID" prefWidth="60"/>
+            <TableColumn fx:id="studentIdColumn" text="Student ID" prefWidth="110"/>
+            <TableColumn fx:id="windowColumn" text="Window" prefWidth="110"/>
+            <TableColumn fx:id="sponsorshipColumn" text="Sponsorship" prefWidth="110"/>
+            <TableColumn fx:id="statusColumn" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="scoreColumn" text="Score" prefWidth="80"/>
+        </columns>
+    </TableView>
+
+    <Label text="Application Form" style="-fx-font-weight: bold;"/>
+
+    <GridPane hgap="12" vgap="10">
+        <Label text="Student User ID:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <TextField fx:id="studentUserIdField" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <Label text="Window Code:" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+        <TextField fx:id="windowCodeField" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+        <Label text="Sponsorship:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <ComboBox fx:id="sponsorshipCombo" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="Status:" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+        <ComboBox fx:id="statusCombo" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+        <Label text="Department:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <TextField fx:id="departmentField" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+        <Label text="Campus Pref:" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+        <TextField fx:id="campusField" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+
+        <Label text="Distance (km):" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <TextField fx:id="distanceField" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+        <Label text="Score:" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
+        <TextField fx:id="scoreField" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+
+        <CheckBox fx:id="disabilityCheck" text="Has Disability" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+    </GridPane>
+
+    <HBox spacing="10">
+        <Button text="Create" onAction="#onCreate"/>
+        <Button text="Update" onAction="#onUpdate"/>
+        <Button text="Delete" onAction="#onDelete"/>
+        <Button text="Clear" onAction="#onClear"/>
+    </HBox>
+
+    <Label fx:id="messageLabel" textFill="red"/>
+</VBox>

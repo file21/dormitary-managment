@@ -8,7 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
- * PostgreSQL implementation for notifications.
+ * MySQL implementation for notifications.
  */
 public final class NotificationDaoPg implements NotificationDao {
     private final DataSource ds = Db.dataSource();

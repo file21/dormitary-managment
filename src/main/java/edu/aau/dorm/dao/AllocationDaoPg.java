@@ -8,7 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
- * PostgreSQL implementation for allocation / bed assignment.
+ * MySQL implementation for allocation / bed assignment.
  */
 public final class AllocationDaoPg implements AllocationDao {
     private final DataSource ds = Db.dataSource();

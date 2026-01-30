@@ -9,7 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * PostgreSQL implementation for BlockDao.
+ * MySQL implementation for BlockDao.
  */
 public final class BlockDaoPg implements BlockDao {
     private final DataSource ds = Db.dataSource();

@@ -8,7 +8,7 @@ import java.sql.*;
 import java.time.Instant;
 
 /**
- * PostgreSQL implementation for StudentDao.
+ * MySQL implementation for StudentDao.
  */
 public final class StudentDaoPg implements StudentDao {
     private final DataSource ds = Db.dataSource();

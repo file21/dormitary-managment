@@ -21,9 +21,9 @@ mvn clean javafx:run
 
 ## Login Credentials
 
-- Admin: `admin` / `admin123`
-- Proctor: `proctor1` / `pass123`
-- Student: `student1` / `pass123`
+- Admin: `admin1` / `admin123`
+- Proctor: `proctor_main_male` / `pass123`
+- Student: `student001` / `pass123`
 
 ## Project Structure
 

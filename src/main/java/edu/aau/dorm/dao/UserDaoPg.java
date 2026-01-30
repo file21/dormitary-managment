@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 /**
- * PostgreSQL implementation for UserDao.
+ * MySQL implementation for UserDao.
  */
 public final class UserDaoPg implements UserDao {
     private final DataSource ds = Db.dataSource();
