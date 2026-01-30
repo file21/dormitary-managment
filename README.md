@@ -32,3 +32,7 @@ mvn clean javafx:run
 - `service/` - Business logic
 - `ui/` - JavaFX controllers and views
 - `util/` - Helpers (DB connection, password hashing)
+
+## Design & Team Breakdown
+
+See `DESIGN.md` for a simple architecture overview, diagram, and a suggested 6-person team split.
