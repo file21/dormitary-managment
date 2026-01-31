@@ -2,6 +2,7 @@ package dorm.service;
 
 import dorm.dao.*;
 import dorm.model.*;
+import dorm.util.Validation;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -53,8 +54,13 @@ public class DatabaseDormService {
      * Authenticate a user with username and password
      */
     public Optional<User> authenticate(String username, String password) {
-        return userRepository.findByUsername(username)
-                .filter(user -> user.getPassword().equals(password));
+        String safeUsername = normalizeOptional(username);
+        String safePassword = normalizeOptional(password);
+        if (safeUsername == null || safePassword == null || safeUsername.isBlank() || safePassword.isBlank()) {
+            return Optional.empty();
+        }
+        return userRepository.findByUsername(safeUsername)
+                .filter(user -> user.getPassword().equals(safePassword));
     }
     
     // ========== Student Management ==========
@@ -63,13 +69,27 @@ public class DatabaseDormService {
      * Register a new student
      */
     public Student registerStudent(String username, String password, String fullName, String studentId, String city) {
+        String normalizedUsername = normalizeRequired(username, "Username");
+        String normalizedPassword = normalizeRequired(password, "Password");
+        String normalizedFullName = normalizeRequired(fullName, "Full name");
+        String normalizedStudentId = Validation.normalizeStudentId(studentId);
+        Validation.requireValidStudentId(normalizedStudentId);
+        String normalizedCity = normalizeRequired(city, "City");
+
+        if (userRepository.findByUsername(normalizedUsername).isPresent()) {
+            throw new IllegalArgumentException("Username already exists.");
+        }
+        if (studentRepository.findByStudentId(normalizedStudentId).isPresent()) {
+            throw new IllegalArgumentException("Student ID already registered.");
+        }
+
         Student student = new Student(
             UUID.randomUUID().toString(),
-            username,
-            password,
-            fullName,
-            studentId,
-            city
+            normalizedUsername,
+            normalizedPassword,
+            normalizedFullName,
+            normalizedStudentId,
+            normalizedCity
         );
         
         studentRepository.save(student);
@@ -87,7 +107,9 @@ public class DatabaseDormService {
      * Find student by student ID
      */
     public Optional<Student> findStudentByStudentId(String studentId) {
-        return studentRepository.findByStudentId(studentId);
+        String normalized = Validation.normalizeStudentId(studentId);
+        Validation.requireValidStudentId(normalized);
+        return studentRepository.findByStudentId(normalized);
     }
     
     /**
@@ -103,19 +125,24 @@ public class DatabaseDormService {
      * Submit a new dormitory application
      */
     public DormApplication submitApplication(Student student, String sponsorshipType, String disabilityInfo) {
+        Validation.require(student != null, "Student is required.");
+        String normalizedSponsorship = normalizeRequired(sponsorshipType, "Sponsorship type");
+        String normalizedDisability = normalizeOptional(disabilityInfo);
+
         // Update student information
-        student.setSponsorshipType(sponsorshipType);
-        student.setDisabilityInfo(disabilityInfo);
+        student.setSponsorshipType(normalizedSponsorship);
+        student.setDisabilityInfo(normalizedDisability);
         studentRepository.update(student);
         
-        // Create application
-        DormApplication application = new DormApplication(
-            UUID.randomUUID().toString(),
-            student
-        );
-        
-        applicationRepository.save(application);
-        return application;
+        return applicationRepository.findByStudent(student)
+                .orElseGet(() -> {
+                    DormApplication application = new DormApplication(
+                        UUID.randomUUID().toString(),
+                        student
+                    );
+                    applicationRepository.save(application);
+                    return application;
+                });
     }
     
     /**
@@ -136,8 +163,10 @@ public class DatabaseDormService {
      * Update application status and note
      */
     public void updateApplication(DormApplication application, ApplicationStatus status, String note) {
+        Validation.require(application != null, "Application is required.");
+        Validation.require(status != null, "Status is required.");
         application.setStatus(status);
-        application.setAdminNote(note);
+        application.setAdminNote(normalizeOptional(note));
         applicationRepository.update(application);
     }
     
@@ -158,22 +187,30 @@ public class DatabaseDormService {
      * Assign a student to a building
      */
     public void assignBuilding(Student student, String buildingName) {
-        student.setAssignedBuilding(buildingName);
+        Validation.require(student != null, "Student is required.");
+        String normalizedBuilding = normalizeRequired(buildingName, "Building name");
+
+        DormApplication application = applicationRepository.findByStudent(student)
+                .orElseThrow(() -> new IllegalStateException("Student has no application on record."));
+        if (application.getStatus() != ApplicationStatus.APPROVED && application.getStatus() != ApplicationStatus.ASSIGNED) {
+            throw new IllegalStateException("Only approved applications can be assigned.");
+        }
+
+        student.setAssignedBuilding(normalizedBuilding);
         student.setEntryDate(null);
         student.setWithdrawalDate(null);
         studentRepository.update(student);
-        
+
         // Update application status to ASSIGNED
-        applicationRepository.findByStudent(student).ifPresent(application -> {
-            application.setStatus(ApplicationStatus.ASSIGNED);
-            applicationRepository.update(application);
-        });
+        application.setStatus(ApplicationStatus.ASSIGNED);
+        applicationRepository.update(application);
     }
     
     /**
      * Register student entry to dormitory
      */
     public void registerEntry(Student student) {
+        Validation.require(student != null, "Student is required.");
         student.setEntryDate(LocalDate.now().toString());
         student.setWithdrawalDate(null);
         studentRepository.update(student);
@@ -183,6 +220,7 @@ public class DatabaseDormService {
      * Register student withdrawal from dormitory
      */
     public void registerWithdrawal(Student student) {
+        Validation.require(student != null, "Student is required.");
         student.setWithdrawalDate(LocalDate.now().toString());
         studentRepository.update(student);
     }
@@ -200,7 +238,12 @@ public class DatabaseDormService {
      * Assign a building to a proctor
      */
     public void assignBuildingToProctor(User proctor, String buildingName) {
-        buildingAssignmentRepository.save(proctor, buildingName);
+        Validation.require(proctor != null, "Proctor is required.");
+        String normalizedBuilding = normalizeOptional(buildingName);
+        if (normalizedBuilding == null || normalizedBuilding.isBlank()) {
+            normalizedBuilding = "Unassigned";
+        }
+        buildingAssignmentRepository.save(proctor, normalizedBuilding);
     }
     
     // ========== User Management ==========
@@ -223,6 +266,10 @@ public class DatabaseDormService {
      * Add a new user (admin or proctor)
      */
     public void addUser(User user) {
+        Validation.require(user != null, "User is required.");
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists.");
+        }
         userRepository.save(user);
     }
     
@@ -230,6 +277,7 @@ public class DatabaseDormService {
      * Remove a user
      */
     public void removeUser(User user) {
+        Validation.require(user != null, "User is required.");
         // Remove building assignment if proctor
         if (user.getRole() == Role.PROCTOR) {
             buildingAssignmentRepository.deleteByProctor(user);
@@ -244,11 +292,14 @@ public class DatabaseDormService {
      * Add a new announcement
      */
     public void addAnnouncement(String title, String body, String createdBy) {
+        String normalizedTitle = normalizeRequired(title, "Title");
+        String normalizedBody = normalizeRequired(body, "Body");
+        String normalizedCreator = normalizeRequired(createdBy, "Creator");
         Announcement announcement = new Announcement(
             UUID.randomUUID().toString(),
-            title,
-            body,
-            createdBy,
+            normalizedTitle,
+            normalizedBody,
+            normalizedCreator,
             LocalDateTime.now()
         );
         
@@ -268,11 +319,14 @@ public class DatabaseDormService {
      * Send a message
      */
     public void sendMessage(String fromUser, String toUser, String content) {
+        String normalizedFrom = normalizeRequired(fromUser, "Sender");
+        String normalizedTo = normalizeRequired(toUser, "Recipient");
+        String normalizedContent = normalizeRequired(content, "Message");
         Message message = new Message(
             UUID.randomUUID().toString(),
-            fromUser,
-            toUser,
-            content,
+            normalizedFrom,
+            normalizedTo,
+            normalizedContent,
             LocalDateTime.now()
         );
         
@@ -283,6 +337,16 @@ public class DatabaseDormService {
      * Get messages for a user
      */
     public List<Message> getMessagesForUser(String username) {
-        return messageRepository.findByUser(username);
+        String normalizedUsername = normalizeRequired(username, "Username");
+        return messageRepository.findByUser(normalizedUsername);
+    }
+
+    private String normalizeRequired(String value, String fieldName) {
+        Validation.requireNotBlank(value, fieldName);
+        return value.trim();
+    }
+
+    private String normalizeOptional(String value) {
+        return value == null ? null : value.trim();
     }
 }

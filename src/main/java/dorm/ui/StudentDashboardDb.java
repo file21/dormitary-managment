@@ -127,8 +127,10 @@ public class StudentDashboardDb {
             }
             
             try {
-                DormApplication application = service.getApplicationForStudent(student).orElseGet(() ->
-                        service.submitApplication(student, sponsorshipField.getText().trim(), disabilityField.getText().trim()));
+                DormApplication application = service.submitApplication(
+                        student,
+                        sponsorshipField.getText().trim(),
+                        disabilityField.getText().trim());
 
                 if (!documentField.getText().isBlank()) {
                     student.addDocumentPath(documentField.getText());
