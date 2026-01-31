@@ -1,6 +1,6 @@
 # Dormitory Management System
 
-A comprehensive JavaFX desktop application for managing dormitory applications, assignments, and resident tracking with CSV file-based data persistence.
+A JavaFX desktop application for managing dormitory applications, assignments, and resident tracking with CSV file-based data persistence.
 
 ## Features
 
@@ -10,125 +10,113 @@ A comprehensive JavaFX desktop application for managing dormitory applications, 
 - View application status and admin notes
 - Send/receive messages
 - Upload required documents
-- View assigned building and entry/withdrawal dates
 
 ### For Admins
-- Review and update application statuses (Approve, Decline, Resubmit)
-- Post announcements to all students
-- Message students directly
-- Search students by ID
+- Review and update application statuses
+- Post announcements
+- Message students
 - Assign buildings to approved students
 - Export student data to CSV
 
 ### For Proctors
 - View students assigned to their building
-- Register student entry dates
-- Register student withdrawal dates
-- Message students in their building
+- Register student entry/withdrawal dates
+- Message students
 
 ### For Owners
 - All admin capabilities
 - Add and remove admin and proctor accounts
 - Assign buildings to proctors
-- Manage system-wide staff
 
-## Technology Stack
+## Requirements
 
-- **Java 21** - Core programming language
-- **JavaFX 21** - Desktop GUI framework
-- **CSV Files** - Data persistence (stored in `data/` directory)
-- **Maven** - Build and dependency management
+- **Java JDK 21** or later
+- **JavaFX 21** (OpenJFX)
 
-## OOP & SOLID Principles
+## Installation
 
-This system demonstrates:
-- **Encapsulation** - Private fields with controlled access
-- **Abstraction** - Repository interfaces hiding implementation details
-- **Inheritance** - Student extends User
-- **Polymorphism** - Repository pattern with interchangeable implementations
+### Step 1: Install Java JDK 21
 
-SOLID Principles:
-- **SRP** - Each class has a single responsibility
-- **OCP** - Extensible through interfaces
-- **LSP** - Student is substitutable for User
-- **ISP** - Focused, specific repository interfaces
-- **DIP** - Service depends on abstractions, not concrete classes
-
-See [SOLID_PRINCIPLES.md](SOLID_PRINCIPLES.md) for detailed documentation.
-
-## Setup
-
-### 1. Prerequisites
-
-- Java 21 or later
-- Maven 3.8+
-
-### 2. Build the Application
-
+**Ubuntu/Debian:**
 ```bash
-mvn clean compile
+sudo apt-get update
+sudo apt-get install openjdk-21-jdk
 ```
 
-### 3. Run the Application
+**Windows/macOS:**
+Download from https://adoptium.net/
 
+### Step 2: Install JavaFX
+
+**Ubuntu/Debian:**
 ```bash
-mvn javafx:run
+sudo apt-get install openjfx
 ```
 
-Or export JAVA_HOME first if needed:
+**Windows/macOS:**
+1. Download JavaFX SDK from https://openjfx.io/
+2. Extract to a folder (e.g., `C:\javafx-sdk-21` on Windows)
+3. Update the `JAVAFX_PATH` in compile.sh/compile.bat
+
+## How to Compile and Run
+
+### Linux/macOS
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-mvn javafx:run
+# Make scripts executable (first time only)
+chmod +x compile.sh run.sh
+
+# Compile
+./compile.sh
+
+# Run
+./run.sh
 ```
 
-## Data Storage
+### Windows
 
-All data is stored in CSV files in the `data/` directory:
-- `users.csv` - Admin, proctor, and owner accounts
-- `students.csv` - Student accounts and information
-- `applications.csv` - Dormitory applications
-- `announcements.csv` - System announcements
-- `messages.csv` - User messages
-- `building_assignments.csv` - Proctor building assignments
+```cmd
+# Compile
+compile.bat
 
-The `data/` directory is created automatically if it doesn't exist, and sample data is included.
+# Run
+run.bat
+```
 
 ## Default Login Credentials
 
-- **Admin**: username=`admin`, password=`admin123`
-- **Proctor**: username=`proctor1`, password=`pass123`
-- **Owner**: username=`owner`, password=`owner123`
-- **Student**: username=`student1`, password=`pass123`
+| Role    | Username  | Password  |
+|---------|-----------|-----------|
+| Admin   | admin     | admin123  |
+| Proctor | proctor1  | pass123   |
+| Owner   | owner     | owner123  |
+| Student | student1  | pass123   |
 
 ## Project Structure
 
 ```
 src/main/java/dorm/
-├── dao/                    # Data Access Objects (interfaces + CSV implementations)
-│   ├── *Repository.java    # DAO interfaces (ISP, DIP)
-│   ├── Csv*.java           # CSV file implementations
-│   └── DaoFactory.java     # Factory for creating DAOs
-├── model/                  # Domain models
-│   ├── User.java           # Base user class
-│   ├── Student.java        # Student (inherits from User)
-│   ├── Role.java           # User roles enum
-│   ├── ApplicationStatus.java
+├── App.java                 # Main entry point
+├── dao/                     # Data Access Objects
+│   ├── *Repository.java     # Interfaces
+│   └── Csv*.java            # CSV implementations
+├── model/                   # Data models
+│   ├── User.java
+│   ├── Student.java
 │   └── ...
-├── service/                # Business logic layer
+├── service/                 # Business logic
 │   └── DatabaseDormService.java
-├── ui/                     # JavaFX UI components
+├── ui/                      # JavaFX UI classes
 │   ├── LoginViewDb.java
 │   ├── StudentDashboardDb.java
 │   ├── AdminDashboardDb.java
 │   ├── ProctorDashboardDb.java
 │   └── OwnerDashboardDb.java
-├── util/                   # Utilities
-│   ├── CsvHelper.java      # CSV file operations utility
-│   └── Validation.java
-└── App.java                # Main application entry point
+└── util/                    # Utilities
+    ├── CsvHelper.java
+    └── Validation.java
 
-data/                       # CSV data files
+data/                        # CSV data files (auto-created)
 ├── users.csv
 ├── students.csv
 ├── applications.csv
@@ -137,24 +125,20 @@ data/                       # CSV data files
 └── building_assignments.csv
 ```
 
-## File I/O Operations
+## Data Storage
 
-1. **CSV File I/O** - All data persisted to CSV files
-2. **CSV Export** - Export student lists to CSV files
-3. **File Upload** - FileChooser for selecting documents and payment slips
+All data is stored in CSV files in the `data/` directory. The directory and files are created automatically when the application runs.
 
-## Build & Test
+## Troubleshooting
 
-```bash
-# Clean and compile
-mvn clean compile
+### "JavaFX not found" error
+- Make sure JavaFX is installed
+- Update `JAVAFX_PATH` in compile.sh/run.sh (or .bat files) to point to your JavaFX lib folder
 
-# Run application
-mvn javafx:run
-
-# Package (optional)
-mvn package
-```
+### Common JavaFX paths:
+- **Ubuntu/Debian:** `/usr/share/openjfx/lib`
+- **macOS (Homebrew):** `/opt/homebrew/opt/openjfx/libexec/lib`
+- **Windows:** `C:\javafx-sdk-21\lib`
 
 ## License
 
