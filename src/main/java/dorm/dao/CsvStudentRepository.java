@@ -10,13 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * CSV implementation of StudentRepository.
- */
 public class CsvStudentRepository implements StudentRepository {
     
     private static final String FILENAME = "students.csv";
-    private static final String HEADER = "id,username,password,display_name,student_id,gender,residency,city,subcity,woreda,sponsorship_type,disability_info,mother_name,mother_phone,mother_residency,emergency_contact,transaction_id,assigned_building";
+    private static final String HEADER = "id,username,password,display_name,student_id,gender,residency,city,subcity,woreda,sponsorship_type,disability_info,emergency_contact_name,emergency_contact_phone,transaction_id,assigned_building";
     
     @Override
     public Optional<Student> findByStudentId(String studentId) {
@@ -129,36 +126,24 @@ public class CsvStudentRepository implements StudentRepository {
             student.setDisabilityInfo(CsvHelper.emptyToNull(record[11]));
         }
         
-        // mother_name
+        // emergency_contact_name
         if (record.length > 12) {
-            student.setMotherName(CsvHelper.emptyToNull(record[12]));
+            student.setEmergencyContactName(CsvHelper.emptyToNull(record[12]));
         }
         
-        // mother_phone
+        // emergency_contact_phone
         if (record.length > 13) {
-            student.setMotherPhone(CsvHelper.emptyToNull(record[13]));
-        }
-        
-        // mother_residency
-        if (record.length > 14 && record[14] != null && !record[14].isEmpty()) {
-            try {
-                student.setMotherResidency(Residency.valueOf(record[14]));
-            } catch (Exception e) { }
-        }
-        
-        // emergency_contact
-        if (record.length > 15) {
-            student.setEmergencyContact(CsvHelper.emptyToNull(record[15]));
+            student.setEmergencyContactPhone(CsvHelper.emptyToNull(record[13]));
         }
         
         // transaction_id
-        if (record.length > 16) {
-            student.setTransactionId(CsvHelper.emptyToNull(record[16]));
+        if (record.length > 14) {
+            student.setTransactionId(CsvHelper.emptyToNull(record[14]));
         }
         
         // assigned_building
-        if (record.length > 17) {
-            String building = CsvHelper.emptyToNull(record[17]);
+        if (record.length > 15) {
+            String building = CsvHelper.emptyToNull(record[15]);
             if (building != null) {
                 student.setAssignedBuilding(building);
             }
@@ -181,10 +166,8 @@ public class CsvStudentRepository implements StudentRepository {
             CsvHelper.nullSafe(student.getWoreda()),
             student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "",
             CsvHelper.nullSafe(student.getDisabilityInfo()),
-            CsvHelper.nullSafe(student.getMotherName()),
-            CsvHelper.nullSafe(student.getMotherPhone()),
-            student.getMotherResidency() != null ? student.getMotherResidency().name() : "",
-            CsvHelper.nullSafe(student.getEmergencyContact()),
+            CsvHelper.nullSafe(student.getEmergencyContactName()),
+            CsvHelper.nullSafe(student.getEmergencyContactPhone()),
             CsvHelper.nullSafe(student.getTransactionId()),
             CsvHelper.nullSafe(student.getAssignedBuilding())
         };

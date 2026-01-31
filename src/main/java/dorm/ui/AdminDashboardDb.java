@@ -19,10 +19,7 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class AdminDashboardDb {
@@ -31,7 +28,7 @@ public class AdminDashboardDb {
     private final Stage stage;
     private final BorderPane root;
     private final TableView<DormApplication> applicationTable;
-    private final ListView<String> announcementList;
+    private final TableView<Announcement> announcementTable;
     private final ListView<String> messageList;
     private final Map<String, SimpleBooleanProperty> selectionMap = new HashMap<>();
 
@@ -41,7 +38,7 @@ public class AdminDashboardDb {
         this.stage = stage;
         this.root = new BorderPane();
         this.applicationTable = new TableView<>();
-        this.announcementList = new ListView<>();
+        this.announcementTable = new TableView<>();
         this.messageList = new ListView<>();
         build();
         refresh();
@@ -75,7 +72,6 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Applications");
         tab.setClosable(false);
 
-        // Checkbox column
         TableColumn<DormApplication, Boolean> selectCol = new TableColumn<>("Select");
         selectCol.setCellValueFactory(cell -> {
             String id = cell.getValue().getId();
@@ -117,7 +113,6 @@ public class AdminDashboardDb {
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         applicationTable.setEditable(true);
 
-        // Select all checkbox
         CheckBox selectAllBox = new CheckBox("Select All");
         selectAllBox.setOnAction(event -> {
             boolean selected = selectAllBox.isSelected();
@@ -128,16 +123,15 @@ public class AdminDashboardDb {
             applicationTable.refresh();
         });
 
-        // Bulk action buttons
-        Button approveBtn = new Button("Approve Selected");
-        Button declineBtn = new Button("Decline Selected");
-        Button resubmitBtn = new Button("Request Resubmit");
-        Button exportBtn = new Button("Export Selected to CSV");
+        Button approveBtn = new Button("Approve");
+        Button declineBtn = new Button("Decline");
+        Button resubmitBtn = new Button("Resubmit");
+        Button exportBtn = new Button("Export CSV");
         
         TextField buildingField = new TextField();
-        buildingField.setPromptText("Building name");
-        buildingField.setPrefWidth(100);
-        Button assignBtn = new Button("Assign Building");
+        buildingField.setPromptText("Building");
+        buildingField.setPrefWidth(80);
+        Button assignBtn = new Button("Assign");
 
         approveBtn.setOnAction(event -> {
             List<DormApplication> selected = getSelectedApplications();
@@ -183,18 +177,17 @@ public class AdminDashboardDb {
             }
             for (DormApplication app : selected) {
                 if (app.getStatus() == ApplicationStatus.PHASE_ONE_PENDING) {
-                    service.requestResubmit(app, "Please resubmit");
+                    service.requestResubmit(app, "");
                 }
             }
             refresh();
-            showAlert("Requested resubmit for selected applications");
         });
 
         assignBtn.setOnAction(event -> {
             List<DormApplication> selected = getSelectedApplications();
             String building = buildingField.getText().trim();
             if (selected.isEmpty() || building.isEmpty()) {
-                showAlert("Select applications and enter building name");
+                showAlert("Select applications and enter building");
                 return;
             }
             int count = 0;
@@ -242,7 +235,7 @@ public class AdminDashboardDb {
 
     private void exportToCsv(List<DormApplication> applications) {
         FileChooser chooser = new FileChooser();
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
         File file = chooser.showSaveDialog(root.getScene().getWindow());
         if (file == null) return;
         
@@ -273,30 +266,87 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Announcements");
         tab.setClosable(false);
 
+        TableColumn<Announcement, String> titleCol = new TableColumn<>("Title");
+        titleCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getTitle()));
+        titleCol.setPrefWidth(150);
+
+        TableColumn<Announcement, String> bodyCol = new TableColumn<>("Content");
+        bodyCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getBody()));
+        bodyCol.setPrefWidth(300);
+
+        TableColumn<Announcement, String> dateCol = new TableColumn<>("Date");
+        dateCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            cell.getValue().getCreatedAt().toString()));
+        dateCol.setPrefWidth(150);
+
+        announcementTable.getColumns().addAll(titleCol, bodyCol, dateCol);
+        announcementTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
         TextField titleField = new TextField();
+        titleField.setPromptText("Title");
         TextArea bodyArea = new TextArea();
-        bodyArea.setPrefRowCount(3);
+        bodyArea.setPrefRowCount(2);
+        bodyArea.setPromptText("Content");
+        
         Button postButton = new Button("Post");
+        Button editButton = new Button("Edit Selected");
+        Button deleteButton = new Button("Delete Selected");
 
         postButton.setOnAction(event -> {
             if (titleField.getText().isBlank() || bodyArea.getText().isBlank()) {
-                showAlert("Title and body required");
+                showAlert("Title and content required");
                 return;
             }
-            try {
-                service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
-                titleField.clear();
-                bodyArea.clear();
-                refresh();
-            } catch (Exception e) {
-                showAlert("Failed: " + e.getMessage());
-            }
+            service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
+            titleField.clear();
+            bodyArea.clear();
+            refresh();
         });
 
-        VBox form = new VBox(10, titleField, bodyArea, postButton);
+        editButton.setOnAction(event -> {
+            Announcement selected = announcementTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select announcement first");
+                return;
+            }
+            titleField.setText(selected.getTitle());
+            bodyArea.setText(selected.getBody());
+            
+            // Change post button to save
+            postButton.setText("Save");
+            postButton.setOnAction(e -> {
+                selected.setTitle(titleField.getText().trim());
+                selected.setBody(bodyArea.getText().trim());
+                service.updateAnnouncement(selected);
+                titleField.clear();
+                bodyArea.clear();
+                postButton.setText("Post");
+                postButton.setOnAction(ev -> {
+                    if (titleField.getText().isBlank() || bodyArea.getText().isBlank()) return;
+                    service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
+                    titleField.clear();
+                    bodyArea.clear();
+                    refresh();
+                });
+                refresh();
+            });
+        });
+
+        deleteButton.setOnAction(event -> {
+            Announcement selected = announcementTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select announcement first");
+                return;
+            }
+            service.deleteAnnouncement(selected);
+            refresh();
+        });
+
+        HBox buttons = new HBox(10, postButton, editButton, deleteButton);
+        VBox form = new VBox(10, titleField, bodyArea, buttons);
         form.setPadding(new Insets(10));
 
-        VBox wrapper = new VBox(10, form, announcementList);
+        VBox wrapper = new VBox(10, announcementTable, form);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
         return tab;
@@ -306,30 +356,33 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Messages");
         tab.setClosable(false);
 
-        ComboBox<String> recipientBox = new ComboBox<>();
-        recipientBox.setItems(FXCollections.observableArrayList(
-                service.getStudents().stream().map(Student::getUsername).collect(Collectors.toList())
-        ));
+        // Admins type student ID to send message
+        TextField studentIdField = new TextField();
+        studentIdField.setPromptText("Student ID");
         
         TextArea messageArea = new TextArea();
         messageArea.setPrefRowCount(3);
         Button sendButton = new Button("Send");
 
         sendButton.setOnAction(event -> {
-            if (recipientBox.getValue() == null || messageArea.getText().isBlank()) {
-                showAlert("Select student and enter message");
+            String studentId = studentIdField.getText().trim();
+            if (studentId.isEmpty() || messageArea.getText().isBlank()) {
+                showAlert("Enter student ID and message");
                 return;
             }
-            try {
-                service.sendMessage(admin.getUsername(), recipientBox.getValue(), messageArea.getText().trim());
-                messageArea.clear();
-                refresh();
-            } catch (Exception e) {
-                showAlert("Failed: " + e.getMessage());
+            
+            Optional<Student> student = service.findStudentByStudentId(studentId);
+            if (student.isEmpty()) {
+                showAlert("Student not found");
+                return;
             }
+            
+            service.sendMessage(admin.getUsername(), student.get().getUsername(), messageArea.getText().trim());
+            messageArea.clear();
+            refresh();
         });
 
-        VBox form = new VBox(10, recipientBox, messageArea, sendButton);
+        VBox form = new VBox(10, studentIdField, messageArea, sendButton);
         form.setPadding(new Insets(10));
 
         VBox wrapper = new VBox(10, form, messageList);
@@ -342,15 +395,51 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Search");
         tab.setClosable(false);
 
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(10));
-        grid.setHgap(10);
-        grid.setVgap(10);
+        GridPane searchGrid = new GridPane();
+        searchGrid.setPadding(new Insets(10));
+        searchGrid.setHgap(10);
+        searchGrid.setVgap(10);
 
         TextField studentIdField = new TextField();
         Button searchButton = new Button("Search");
-        Label resultLabel = new Label();
-        resultLabel.setWrapText(true);
+
+        searchGrid.addRow(0, new Label("Student ID"), studentIdField, searchButton);
+
+        // Editable student info
+        GridPane editGrid = new GridPane();
+        editGrid.setPadding(new Insets(10));
+        editGrid.setHgap(10);
+        editGrid.setVgap(10);
+
+        TextField nameField = new TextField();
+        nameField.setDisable(true);
+        ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
+        genderBox.setDisable(true);
+        ComboBox<Residency> residencyBox = new ComboBox<>(FXCollections.observableArrayList(Residency.values()));
+        residencyBox.setDisable(true);
+        TextField cityField = new TextField();
+        cityField.setDisable(true);
+        TextField subcityField = new TextField();
+        subcityField.setDisable(true);
+        TextField woredaField = new TextField();
+        woredaField.setDisable(true);
+        TextField buildingField = new TextField();
+        buildingField.setDisable(true);
+        Label statusLabel = new Label();
+        Button saveButton = new Button("Save Changes");
+        saveButton.setDisable(true);
+
+        editGrid.addRow(0, new Label("Name"), nameField);
+        editGrid.addRow(1, new Label("Gender"), genderBox);
+        editGrid.addRow(2, new Label("Residency"), residencyBox);
+        editGrid.addRow(3, new Label("City"), cityField);
+        editGrid.addRow(4, new Label("Subcity"), subcityField);
+        editGrid.addRow(5, new Label("Woreda"), woredaField);
+        editGrid.addRow(6, new Label("Building"), buildingField);
+        editGrid.addRow(7, new Label("Status"), statusLabel);
+        editGrid.add(saveButton, 1, 8);
+
+        final Student[] foundStudent = {null};
 
         searchButton.setOnAction(event -> {
             String id = studentIdField.getText().trim();
@@ -358,36 +447,73 @@ public class AdminDashboardDb {
                 showAlert("Enter student ID");
                 return;
             }
-            service.findStudentByStudentId(id)
-                    .map(this::formatStudent)
-                    .ifPresentOrElse(resultLabel::setText, () -> resultLabel.setText("Not found"));
+            
+            Optional<Student> result = service.findStudentByStudentId(id);
+            if (result.isEmpty()) {
+                showAlert("Student not found");
+                foundStudent[0] = null;
+                nameField.clear();
+                genderBox.setValue(null);
+                residencyBox.setValue(null);
+                cityField.clear();
+                subcityField.clear();
+                woredaField.clear();
+                buildingField.clear();
+                statusLabel.setText("");
+                saveButton.setDisable(true);
+                return;
+            }
+            
+            Student s = result.get();
+            foundStudent[0] = s;
+            
+            nameField.setText(s.getDisplayName());
+            nameField.setDisable(false);
+            genderBox.setValue(s.getGender());
+            genderBox.setDisable(false);
+            residencyBox.setValue(s.getResidency());
+            residencyBox.setDisable(false);
+            cityField.setText(safe(s.getCity()));
+            cityField.setDisable(false);
+            subcityField.setText(safe(s.getSubcity()));
+            subcityField.setDisable(false);
+            woredaField.setText(safe(s.getWoreda()));
+            woredaField.setDisable(false);
+            buildingField.setText(s.getAssignedBuilding());
+            buildingField.setDisable(false);
+            
+            String status = service.getApplicationForStudent(s)
+                    .map(app -> app.getStatus().name())
+                    .orElse("No application");
+            statusLabel.setText(status);
+            saveButton.setDisable(false);
         });
 
-        grid.addRow(0, new Label("Student ID"), studentIdField, searchButton);
-        grid.addRow(1, new Label("Result"), resultLabel);
+        saveButton.setOnAction(event -> {
+            if (foundStudent[0] == null) return;
+            
+            Student s = foundStudent[0];
+            s.setGender(genderBox.getValue());
+            s.setResidency(residencyBox.getValue());
+            s.setCity(cityField.getText().trim());
+            s.setSubcity(subcityField.getText().trim());
+            s.setWoreda(woredaField.getText().trim());
+            s.setAssignedBuilding(buildingField.getText().trim());
+            
+            service.updateStudent(s);
+            showAlert("Student updated");
+            refresh();
+        });
 
-        tab.setContent(grid);
+        VBox wrapper = new VBox(10, searchGrid, new Separator(), editGrid);
+        wrapper.setPadding(new Insets(10));
+        tab.setContent(wrapper);
         return tab;
-    }
-
-    private String formatStudent(Student s) {
-        String status = service.getApplicationForStudent(s)
-                .map(app -> app.getStatus().name())
-                .orElse("No application");
-        return String.format("Name: %s | ID: %s | Gender: %s | Sponsorship: %s | Status: %s | Building: %s",
-                s.getDisplayName(), s.getStudentId(),
-                s.getGender() != null ? s.getGender().name() : "-",
-                s.getSponsorshipType() != null ? s.getSponsorshipType().name() : "-",
-                status, safe(s.getAssignedBuilding()));
     }
 
     private void refresh() {
         applicationTable.setItems(FXCollections.observableArrayList(service.getApplications()));
-        announcementList.setItems(FXCollections.observableArrayList(
-                service.getAnnouncements().stream()
-                        .map(a -> a.getTitle() + " - " + a.getBody())
-                        .collect(Collectors.toList())
-        ));
+        announcementTable.setItems(FXCollections.observableArrayList(service.getAnnouncements()));
         messageList.setItems(FXCollections.observableArrayList(
                 service.getMessagesForUser(admin.getUsername()).stream()
                         .map(m -> m.getSentAt() + " | " + m.getFromUser() + ": " + m.getContent())
@@ -402,7 +528,7 @@ public class AdminDashboardDb {
     }
 
     private String safe(String value) {
-        return value == null || value.isBlank() ? "-" : value;
+        return value == null || value.isBlank() ? "" : value;
     }
 
     private void showAlert(String message) {

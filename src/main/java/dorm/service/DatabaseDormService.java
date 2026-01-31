@@ -4,13 +4,11 @@ import dorm.dao.*;
 import dorm.model.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Database-backed implementation of dormitory service.
- */
 public class DatabaseDormService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
@@ -35,14 +33,12 @@ public class DatabaseDormService {
     // ========== Authentication ==========
     
     public Optional<Object> authenticate(String username, String password) {
-        // Check admin/owner users
         Optional<User> user = userRepository.findByUsername(username)
                 .filter(u -> u.getPassword().equals(password));
         if (user.isPresent()) {
             return Optional.of(user.get());
         }
         
-        // Check students
         for (Student student : studentRepository.findAll()) {
             if (student.getUsername().equals(username) && student.getPassword().equals(password)) {
                 return Optional.of(student);
@@ -83,9 +79,6 @@ public class DatabaseDormService {
     
     // ========== Application Management ==========
     
-    /**
-     * Submit Phase One application
-     */
     public DormApplication submitPhaseOneApplication(Student student, SponsorshipType sponsorshipType,
                                                       Residency residency, String city, String subcity, 
                                                       String woreda, String disabilityInfo) {
@@ -115,16 +108,10 @@ public class DatabaseDormService {
         return application;
     }
     
-    /**
-     * Submit Phase Two application (emergency contact & transaction ID)
-     */
-    public void submitPhaseTwoApplication(Student student, String motherName, String motherPhone,
-                                          Residency motherResidency, String emergencyContact,
-                                          String transactionId) {
-        student.setMotherName(motherName);
-        student.setMotherPhone(motherPhone);
-        student.setMotherResidency(motherResidency);
-        student.setEmergencyContact(emergencyContact);
+    public void submitPhaseTwoApplication(Student student, String emergencyContactName, 
+                                          String emergencyContactPhone, String transactionId) {
+        student.setEmergencyContactName(emergencyContactName);
+        student.setEmergencyContactPhone(emergencyContactPhone);
         student.setTransactionId(transactionId);
         studentRepository.update(student);
         
@@ -176,9 +163,6 @@ public class DatabaseDormService {
         applicationRepository.update(application);
     }
     
-    /**
-     * Check if student can fill Phase Two (phase one must be approved)
-     */
     public boolean canFillPhaseTwo(Student student) {
         return applicationRepository.findByStudent(student)
                 .map(app -> app.getStatus() == ApplicationStatus.PHASE_ONE_APPROVED)
@@ -186,15 +170,15 @@ public class DatabaseDormService {
     }
     
     /**
-     * Check if student is ready for building assignment (phase two approved)
+     * Check if student is ready for building assignment.
+     * Ready when Phase Two is approved OR pending (submitted).
      */
     public boolean isReadyForAssignment(DormApplication application) {
-        return application.getStatus() == ApplicationStatus.PHASE_TWO_APPROVED;
+        ApplicationStatus status = application.getStatus();
+        return status == ApplicationStatus.PHASE_TWO_APPROVED || 
+               status == ApplicationStatus.PHASE_TWO_PENDING;
     }
     
-    /**
-     * Assign a student to a building
-     */
     public void assignBuilding(Student student, String buildingName) {
         student.setAssignedBuilding(buildingName);
         studentRepository.update(student);
@@ -239,6 +223,14 @@ public class DatabaseDormService {
     
     public List<Announcement> getAnnouncements() {
         return announcementRepository.findAll();
+    }
+    
+    public void updateAnnouncement(Announcement announcement) {
+        announcementRepository.update(announcement);
+    }
+    
+    public void deleteAnnouncement(Announcement announcement) {
+        announcementRepository.delete(announcement);
     }
     
     // ========== Messaging ==========

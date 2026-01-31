@@ -9,10 +9,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * CSV implementation of AnnouncementRepository.
- * Demonstrates SRP - handles only announcement CSV operations.
- */
 public class CsvAnnouncementRepository implements AnnouncementRepository {
     
     private static final String FILENAME = "announcements.csv";
@@ -30,9 +26,7 @@ public class CsvAnnouncementRepository implements AnnouncementRepository {
             }
         }
         
-        // Sort by created_at descending
         announcements.sort(Comparator.comparing(Announcement::getCreatedAt).reversed());
-        
         return announcements;
     }
     
@@ -42,9 +36,36 @@ public class CsvAnnouncementRepository implements AnnouncementRepository {
         CsvHelper.append(FILENAME, HEADER, record);
     }
     
-    /**
-     * Convert CSV record to Announcement object
-     */
+    @Override
+    public void update(Announcement announcement) {
+        List<Announcement> all = findAll();
+        List<String[]> records = new ArrayList<>();
+        
+        for (Announcement a : all) {
+            if (a.getId().equals(announcement.getId())) {
+                records.add(announcementToRecord(announcement));
+            } else {
+                records.add(announcementToRecord(a));
+            }
+        }
+        
+        CsvHelper.writeAll(FILENAME, HEADER, records);
+    }
+    
+    @Override
+    public void delete(Announcement announcement) {
+        List<Announcement> all = findAll();
+        List<String[]> records = new ArrayList<>();
+        
+        for (Announcement a : all) {
+            if (!a.getId().equals(announcement.getId())) {
+                records.add(announcementToRecord(a));
+            }
+        }
+        
+        CsvHelper.writeAll(FILENAME, HEADER, records);
+    }
+    
     private Announcement recordToAnnouncement(String[] record) {
         LocalDateTime createdAt;
         try {
@@ -54,17 +75,14 @@ public class CsvAnnouncementRepository implements AnnouncementRepository {
         }
         
         return new Announcement(
-            record[0],  // id
-            record[1],  // title
-            record[2],  // body
-            record[3],  // created_by
-            createdAt   // created_at
+            record[0],
+            record[1],
+            record[2],
+            record[3],
+            createdAt
         );
     }
     
-    /**
-     * Convert Announcement to CSV record
-     */
     private String[] announcementToRecord(Announcement announcement) {
         return new String[] {
             announcement.getId(),

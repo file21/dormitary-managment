@@ -13,11 +13,9 @@ public class Student extends User {
     private String disabilityInfo;
     
     // Phase Two - Emergency contact & payment
-    private String motherName;
-    private String motherPhone;
-    private Residency motherResidency;
-    private String emergencyContact;
-    private String transactionId;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
+    private String transactionId;  // for self-sponsored only
     
     // Assignment
     private String assignedBuilding;
@@ -89,36 +87,20 @@ public class Student extends User {
         this.disabilityInfo = disabilityInfo;
     }
 
-    public String getMotherName() {
-        return motherName;
+    public String getEmergencyContactName() {
+        return emergencyContactName;
     }
 
-    public void setMotherName(String motherName) {
-        this.motherName = motherName;
+    public void setEmergencyContactName(String emergencyContactName) {
+        this.emergencyContactName = emergencyContactName;
     }
 
-    public String getMotherPhone() {
-        return motherPhone;
+    public String getEmergencyContactPhone() {
+        return emergencyContactPhone;
     }
 
-    public void setMotherPhone(String motherPhone) {
-        this.motherPhone = motherPhone;
-    }
-
-    public Residency getMotherResidency() {
-        return motherResidency;
-    }
-
-    public void setMotherResidency(Residency motherResidency) {
-        this.motherResidency = motherResidency;
-    }
-
-    public String getEmergencyContact() {
-        return emergencyContact;
-    }
-
-    public void setEmergencyContact(String emergencyContact) {
-        this.emergencyContact = emergencyContact;
+    public void setEmergencyContactPhone(String emergencyContactPhone) {
+        this.emergencyContactPhone = emergencyContactPhone;
     }
 
     public String getTransactionId() {
