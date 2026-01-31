@@ -3,7 +3,6 @@ package dorm.service;
 import dorm.dao.UserDao;
 import dorm.dao.UserDaoPg;
 import dorm.model.User;
-import dorm.util.PasswordHasher;
 
 public final class AuthService {
     private final UserDao userDao;
@@ -23,7 +22,7 @@ public final class AuthService {
         if (!u.active()) 
             throw new IllegalStateException("Account is disabled");
         
-        if (!PasswordHasher.verify(password, u.passwordHash()))
+        if (!u.getPassword().equals(password))
             throw new IllegalArgumentException("Invalid username or password");
 
         return u;

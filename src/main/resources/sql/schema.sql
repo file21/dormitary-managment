@@ -8,7 +8,7 @@ CREATE TYPE sponsorship_type AS ENUM ('GOV','SELF');
 CREATE TABLE IF NOT EXISTS app_user (
   id              BIGSERIAL PRIMARY KEY,
   username        VARCHAR(50) UNIQUE NOT NULL,
-  password_hash   TEXT NOT NULL,
+  password        TEXT NOT NULL,
   role            user_role NOT NULL,
   active          BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMP NOT NULL DEFAULT NOW()
