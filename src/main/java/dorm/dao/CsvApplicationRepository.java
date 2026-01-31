@@ -9,14 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * CSV implementation of ApplicationRepository.
- * Demonstrates SRP - focused on application CSV operations only.
- */
 public class CsvApplicationRepository implements ApplicationRepository {
     
     private static final String FILENAME = "applications.csv";
-    private static final String HEADER = "id,student_id,status,admin_note";
+    private static final String HEADER = "id,student_id,status,admin_note,submitted_date,response_history";
     
     private final StudentRepository studentRepository;
     
@@ -46,7 +42,6 @@ public class CsvApplicationRepository implements ApplicationRepository {
             if (record.length >= 3) {
                 String studentUserId = record[1];
                 
-                // Find the student by looking up their user_id match
                 for (Student student : studentRepository.findAll()) {
                     if (student.getId().equals(studentUserId)) {
                         applications.add(recordToApplication(record, student));
@@ -95,9 +90,6 @@ public class CsvApplicationRepository implements ApplicationRepository {
         CsvHelper.writeAll(FILENAME, HEADER, updatedRecords);
     }
     
-    /**
-     * Convert CSV record to DormApplication object
-     */
     private DormApplication recordToApplication(String[] record, Student student) {
         DormApplication app = new DormApplication(record[0], student);
         app.setStatus(ApplicationStatus.valueOf(record[2]));
@@ -106,18 +98,25 @@ public class CsvApplicationRepository implements ApplicationRepository {
             app.setAdminNote(CsvHelper.emptyToNull(record[3]));
         }
         
+        if (record.length > 4) {
+            app.setSubmittedDate(CsvHelper.emptyToNull(record[4]));
+        }
+        
+        if (record.length > 5) {
+            app.setResponseHistory(CsvHelper.emptyToNull(record[5]));
+        }
+        
         return app;
     }
     
-    /**
-     * Convert DormApplication to CSV record
-     */
     private String[] applicationToRecord(DormApplication application) {
         return new String[] {
             application.getId(),
             application.getStudent().getId(),
             application.getStatus().name(),
-            CsvHelper.nullSafe(application.getAdminNote())
+            CsvHelper.nullSafe(application.getAdminNote()),
+            CsvHelper.nullSafe(application.getSubmittedDate()),
+            CsvHelper.nullSafe(application.getResponseHistory())
         };
     }
 }

@@ -4,7 +4,6 @@ import dorm.dao.*;
 import dorm.model.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -129,34 +128,34 @@ public class DatabaseDormService {
         return applicationRepository.findAll();
     }
     
-    public void approvePhaseOne(DormApplication application, String note) {
-        application.setStatus(ApplicationStatus.PHASE_ONE_APPROVED);
+    /**
+     * Change application status - flexible, can change from any status to any status
+     */
+    public void changeApplicationStatus(DormApplication application, ApplicationStatus newStatus, String note) {
+        application.setStatus(newStatus);
         application.setAdminNote(note);
+        application.addResponseEntry(newStatus);
         applicationRepository.update(application);
+    }
+    
+    public void approvePhaseOne(DormApplication application, String note) {
+        changeApplicationStatus(application, ApplicationStatus.PHASE_ONE_APPROVED, note);
     }
     
     public void declinePhaseOne(DormApplication application, String note) {
-        application.setStatus(ApplicationStatus.PHASE_ONE_DECLINED);
-        application.setAdminNote(note);
-        applicationRepository.update(application);
+        changeApplicationStatus(application, ApplicationStatus.PHASE_ONE_DECLINED, note);
     }
     
     public void requestResubmit(DormApplication application, String note) {
-        application.setStatus(ApplicationStatus.PHASE_ONE_RESUBMIT);
-        application.setAdminNote(note);
-        applicationRepository.update(application);
+        changeApplicationStatus(application, ApplicationStatus.PHASE_ONE_RESUBMIT, note);
     }
     
     public void approvePhaseTwoApplication(DormApplication application, String note) {
-        application.setStatus(ApplicationStatus.PHASE_TWO_APPROVED);
-        application.setAdminNote(note);
-        applicationRepository.update(application);
+        changeApplicationStatus(application, ApplicationStatus.PHASE_TWO_APPROVED, note);
     }
     
     public void declinePhaseTwoApplication(DormApplication application, String note) {
-        application.setStatus(ApplicationStatus.PHASE_TWO_DECLINED);
-        application.setAdminNote(note);
-        applicationRepository.update(application);
+        changeApplicationStatus(application, ApplicationStatus.PHASE_TWO_DECLINED, note);
     }
     
     public void updateApplication(DormApplication application) {
@@ -169,10 +168,6 @@ public class DatabaseDormService {
                 .orElse(false);
     }
     
-    /**
-     * Check if student is ready for building assignment.
-     * Ready when Phase Two is approved OR pending (submitted).
-     */
     public boolean isReadyForAssignment(DormApplication application) {
         ApplicationStatus status = application.getStatus();
         return status == ApplicationStatus.PHASE_TWO_APPROVED || 
@@ -184,8 +179,7 @@ public class DatabaseDormService {
         studentRepository.update(student);
         
         applicationRepository.findByStudent(student).ifPresent(application -> {
-            application.setStatus(ApplicationStatus.ASSIGNED);
-            applicationRepository.update(application);
+            changeApplicationStatus(application, ApplicationStatus.ASSIGNED, "");
         });
     }
     

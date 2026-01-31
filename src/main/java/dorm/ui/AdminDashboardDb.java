@@ -28,7 +28,7 @@ public class AdminDashboardDb {
     private final Stage stage;
     private final BorderPane root;
     private final TableView<DormApplication> applicationTable;
-    private final TableView<Announcement> announcementTable;
+    private final ListView<Announcement> announcementListView;
     private final ListView<String> messageList;
     private final Map<String, SimpleBooleanProperty> selectionMap = new HashMap<>();
 
@@ -38,7 +38,7 @@ public class AdminDashboardDb {
         this.stage = stage;
         this.root = new BorderPane();
         this.applicationTable = new TableView<>();
-        this.announcementTable = new TableView<>();
+        this.announcementListView = new ListView<>();
         this.messageList = new ListView<>();
         build();
         refresh();
@@ -80,17 +80,17 @@ public class AdminDashboardDb {
         });
         selectCol.setCellFactory(col -> new CheckBoxTableCell<>());
         selectCol.setEditable(true);
-        selectCol.setPrefWidth(60);
+        selectCol.setPrefWidth(50);
 
         TableColumn<DormApplication, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getDisplayName()));
-        nameCol.setPrefWidth(120);
+        nameCol.setPrefWidth(100);
 
         TableColumn<DormApplication, String> idCol = new TableColumn<>("Student ID");
         idCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getStudentId()));
-        idCol.setPrefWidth(100);
+        idCol.setPrefWidth(80);
 
         TableColumn<DormApplication, String> sponsorCol = new TableColumn<>("Sponsorship");
         sponsorCol.setCellValueFactory(cell -> {
@@ -102,14 +102,24 @@ public class AdminDashboardDb {
         TableColumn<DormApplication, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStatus().name()));
-        statusCol.setPrefWidth(130);
+        statusCol.setPrefWidth(120);
+
+        TableColumn<DormApplication, String> submittedCol = new TableColumn<>("Submitted");
+        submittedCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getSubmittedDate())));
+        submittedCol.setPrefWidth(80);
+
+        TableColumn<DormApplication, String> responseCol = new TableColumn<>("Last Response");
+        responseCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getLatestResponse())));
+        responseCol.setPrefWidth(120);
 
         TableColumn<DormApplication, String> buildingCol = new TableColumn<>("Building");
         buildingCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getAssignedBuilding()));
-        buildingCol.setPrefWidth(100);
+        buildingCol.setPrefWidth(80);
 
-        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, sponsorCol, statusCol, buildingCol);
+        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, sponsorCol, statusCol, submittedCol, responseCol, buildingCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         applicationTable.setEditable(true);
 
@@ -123,6 +133,7 @@ public class AdminDashboardDb {
             applicationTable.refresh();
         });
 
+        // Status change buttons - work on any status (flexible)
         Button approveBtn = new Button("Approve");
         Button declineBtn = new Button("Decline");
         Button resubmitBtn = new Button("Resubmit");
@@ -141,10 +152,19 @@ public class AdminDashboardDb {
             }
             for (DormApplication app : selected) {
                 ApplicationStatus status = app.getStatus();
-                if (status == ApplicationStatus.PHASE_ONE_PENDING) {
+                // Determine which phase to approve based on current status
+                if (status == ApplicationStatus.PHASE_ONE_PENDING || 
+                    status == ApplicationStatus.PHASE_ONE_DECLINED ||
+                    status == ApplicationStatus.PHASE_ONE_RESUBMIT) {
                     service.approvePhaseOne(app, "");
-                } else if (status == ApplicationStatus.PHASE_TWO_PENDING) {
+                } else if (status == ApplicationStatus.PHASE_TWO_PENDING ||
+                           status == ApplicationStatus.PHASE_TWO_DECLINED) {
                     service.approvePhaseTwoApplication(app, "");
+                } else if (status == ApplicationStatus.PHASE_ONE_APPROVED) {
+                    // Already approved phase one, skip
+                } else if (status == ApplicationStatus.PHASE_TWO_APPROVED ||
+                           status == ApplicationStatus.ASSIGNED) {
+                    // Already done
                 }
             }
             refresh();
@@ -159,9 +179,12 @@ public class AdminDashboardDb {
             }
             for (DormApplication app : selected) {
                 ApplicationStatus status = app.getStatus();
-                if (status == ApplicationStatus.PHASE_ONE_PENDING) {
+                if (status == ApplicationStatus.PHASE_ONE_PENDING ||
+                    status == ApplicationStatus.PHASE_ONE_APPROVED ||
+                    status == ApplicationStatus.PHASE_ONE_RESUBMIT) {
                     service.declinePhaseOne(app, "");
-                } else if (status == ApplicationStatus.PHASE_TWO_PENDING) {
+                } else if (status == ApplicationStatus.PHASE_TWO_PENDING ||
+                           status == ApplicationStatus.PHASE_TWO_APPROVED) {
                     service.declinePhaseTwoApplication(app, "");
                 }
             }
@@ -176,7 +199,10 @@ public class AdminDashboardDb {
                 return;
             }
             for (DormApplication app : selected) {
-                if (app.getStatus() == ApplicationStatus.PHASE_ONE_PENDING) {
+                ApplicationStatus status = app.getStatus();
+                if (status == ApplicationStatus.PHASE_ONE_PENDING ||
+                    status == ApplicationStatus.PHASE_ONE_DECLINED ||
+                    status == ApplicationStatus.PHASE_ONE_APPROVED) {
                     service.requestResubmit(app, "");
                 }
             }
@@ -240,10 +266,10 @@ public class AdminDashboardDb {
         if (file == null) return;
         
         try (FileWriter writer = new FileWriter(file)) {
-            writer.write("Name,Student ID,Gender,Sponsorship,Residency,City,Subcity,Woreda,Status,Building,Transaction ID\n");
+            writer.write("Name,Student ID,Gender,Sponsorship,Residency,City,Subcity,Woreda,Status,Submitted,Last Response,Building,Transaction ID\n");
             for (DormApplication app : applications) {
                 Student s = app.getStudent();
-                writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+                writer.write(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
                         s.getDisplayName(),
                         s.getStudentId(),
                         s.getGender() != null ? s.getGender().name() : "-",
@@ -253,6 +279,8 @@ public class AdminDashboardDb {
                         safe(s.getSubcity()),
                         safe(s.getWoreda()),
                         app.getStatus().name(),
+                        safe(app.getSubmittedDate()),
+                        safe(app.getLatestResponse()),
                         safe(s.getAssignedBuilding()),
                         safe(s.getTransactionId())));
             }
@@ -266,76 +294,88 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Announcements");
         tab.setClosable(false);
 
-        TableColumn<Announcement, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getTitle()));
-        titleCol.setPrefWidth(150);
+        // Custom cell factory for multi-line display
+        announcementListView.setCellFactory(listView -> new ListCell<Announcement>() {
+            @Override
+            protected void updateItem(Announcement item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    VBox box = new VBox(5);
+                    Label titleLabel = new Label(item.getTitle());
+                    titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                    
+                    Label bodyLabel = new Label(item.getBody());
+                    bodyLabel.setWrapText(true);
+                    bodyLabel.setMaxWidth(500);
+                    
+                    Label dateLabel = new Label(item.getCreatedAt().toString() + " by " + item.getCreatedBy());
+                    dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
+                    
+                    box.getChildren().addAll(titleLabel, bodyLabel, dateLabel);
+                    box.setPadding(new Insets(5));
+                    setGraphic(box);
+                }
+            }
+        });
+        announcementListView.setPrefHeight(300);
 
-        TableColumn<Announcement, String> bodyCol = new TableColumn<>("Content");
-        bodyCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getBody()));
-        bodyCol.setPrefWidth(300);
-
-        TableColumn<Announcement, String> dateCol = new TableColumn<>("Date");
-        dateCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-            cell.getValue().getCreatedAt().toString()));
-        dateCol.setPrefWidth(150);
-
-        announcementTable.getColumns().addAll(titleCol, bodyCol, dateCol);
-        announcementTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
+        // Form for new/edit announcement
         TextField titleField = new TextField();
         titleField.setPromptText("Title");
+        
         TextArea bodyArea = new TextArea();
-        bodyArea.setPrefRowCount(2);
-        bodyArea.setPromptText("Content");
+        bodyArea.setPrefRowCount(4);
+        bodyArea.setPromptText("Content (supports multiple lines)");
+        bodyArea.setWrapText(true);
         
         Button postButton = new Button("Post");
         Button editButton = new Button("Edit Selected");
         Button deleteButton = new Button("Delete Selected");
+
+        final Announcement[] editingAnnouncement = {null};
 
         postButton.setOnAction(event -> {
             if (titleField.getText().isBlank() || bodyArea.getText().isBlank()) {
                 showAlert("Title and content required");
                 return;
             }
-            service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
+            
+            if (editingAnnouncement[0] != null) {
+                // Saving edit
+                editingAnnouncement[0].setTitle(titleField.getText().trim());
+                editingAnnouncement[0].setBody(bodyArea.getText().trim());
+                service.updateAnnouncement(editingAnnouncement[0]);
+                editingAnnouncement[0] = null;
+                postButton.setText("Post");
+            } else {
+                // New post
+                service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
+            }
+            
             titleField.clear();
             bodyArea.clear();
             refresh();
         });
 
         editButton.setOnAction(event -> {
-            Announcement selected = announcementTable.getSelectionModel().getSelectedItem();
+            Announcement selected = announcementListView.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                showAlert("Select announcement first");
+                showAlert("Select an announcement first");
                 return;
             }
+            editingAnnouncement[0] = selected;
             titleField.setText(selected.getTitle());
             bodyArea.setText(selected.getBody());
-            
-            // Change post button to save
             postButton.setText("Save");
-            postButton.setOnAction(e -> {
-                selected.setTitle(titleField.getText().trim());
-                selected.setBody(bodyArea.getText().trim());
-                service.updateAnnouncement(selected);
-                titleField.clear();
-                bodyArea.clear();
-                postButton.setText("Post");
-                postButton.setOnAction(ev -> {
-                    if (titleField.getText().isBlank() || bodyArea.getText().isBlank()) return;
-                    service.addAnnouncement(titleField.getText().trim(), bodyArea.getText().trim(), admin.getDisplayName());
-                    titleField.clear();
-                    bodyArea.clear();
-                    refresh();
-                });
-                refresh();
-            });
         });
 
         deleteButton.setOnAction(event -> {
-            Announcement selected = announcementTable.getSelectionModel().getSelectedItem();
+            Announcement selected = announcementListView.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                showAlert("Select announcement first");
+                showAlert("Select an announcement first");
                 return;
             }
             service.deleteAnnouncement(selected);
@@ -346,7 +386,7 @@ public class AdminDashboardDb {
         VBox form = new VBox(10, titleField, bodyArea, buttons);
         form.setPadding(new Insets(10));
 
-        VBox wrapper = new VBox(10, announcementTable, form);
+        VBox wrapper = new VBox(10, announcementListView, form);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
         return tab;
@@ -356,7 +396,6 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Messages");
         tab.setClosable(false);
 
-        // Admins type student ID to send message
         TextField studentIdField = new TextField();
         studentIdField.setPromptText("Student ID");
         
@@ -405,7 +444,6 @@ public class AdminDashboardDb {
 
         searchGrid.addRow(0, new Label("Student ID"), studentIdField, searchButton);
 
-        // Editable student info
         GridPane editGrid = new GridPane();
         editGrid.setPadding(new Insets(10));
         editGrid.setHgap(10);
@@ -513,7 +551,7 @@ public class AdminDashboardDb {
 
     private void refresh() {
         applicationTable.setItems(FXCollections.observableArrayList(service.getApplications()));
-        announcementTable.setItems(FXCollections.observableArrayList(service.getAnnouncements()));
+        announcementListView.setItems(FXCollections.observableArrayList(service.getAnnouncements()));
         messageList.setItems(FXCollections.observableArrayList(
                 service.getMessagesForUser(admin.getUsername()).stream()
                         .map(m -> m.getSentAt() + " | " + m.getFromUser() + ": " + m.getContent())
@@ -528,7 +566,7 @@ public class AdminDashboardDb {
     }
 
     private String safe(String value) {
-        return value == null || value.isBlank() ? "" : value;
+        return value == null || value.isBlank() ? "-" : value;
     }
 
     private void showAlert(String message) {
