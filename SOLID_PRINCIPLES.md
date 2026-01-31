@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system demonstrates all core Object-Oriented Programming principles and the five SOLID design principles. It is a JavaFX desktop application with MySQL database integration and file I/O operations.
+This system demonstrates all core Object-Oriented Programming principles and the five SOLID design principles. It is a JavaFX desktop application with CSV file-based data persistence and file I/O operations.
 
 ---
 
@@ -28,8 +28,8 @@ This system demonstrates all core Object-Oriented Programming principles and the
   - Some fields are immutable (`final`)
 
 - **All DAO implementations**:
-  - Private helper methods like `mapUser()`, `mapStudent()` 
-  - External code cannot access database mapping logic
+  - Private helper methods like `recordToUser()`, `recordToStudent()` 
+  - External code cannot access CSV mapping logic
 
 ### 2. Abstraction ✅
 
@@ -45,12 +45,12 @@ This system demonstrates all core Object-Oriented Programming principles and the
       void save(User user);
   }
   ```
-  - Database complexity hidden behind clean interfaces
-  - Clients don't need to know about SQL, connections, etc.
+  - File I/O complexity hidden behind clean interfaces
+  - Clients don't need to know about CSV parsing, file paths, etc.
 
 - **DatabaseDormService**:
   - Abstracts business logic from UI
-  - UI components don't know about DAOs or database
+  - UI components don't know about DAOs or file storage
 
 ### 3. Inheritance ✅
 
@@ -83,7 +83,7 @@ This system demonstrates all core Object-Oriented Programming principles and the
 
 - **Repository pattern**:
   ```java
-  UserRepository userRepo = new MySqlUserRepository();  // Can be swapped
+  UserRepository userRepo = new CsvUserRepository();  // Can be swapped
   UserRepository testRepo = new InMemoryUserRepository(); // Different implementation
   ```
   - Same interface, different implementations
@@ -109,11 +109,12 @@ This system demonstrates all core Object-Oriented Programming principles and the
 
 **Examples in the system**:
 
-- **MySqlUserRepository** - Only handles User database operations
-- **MySqlStudentRepository** - Only handles Student database operations
+- **CsvUserRepository** - Only handles User CSV file operations
+- **CsvStudentRepository** - Only handles Student CSV file operations
 - **DatabaseDormService** - Only coordinates business logic
 - **LoginViewDb** - Only handles login UI
 - **DaoFactory** - Only creates DAO instances
+- **CsvHelper** - Only handles CSV file I/O utilities
 
 Each class has a single, well-defined responsibility.
 
@@ -124,12 +125,12 @@ Each class has a single, well-defined responsibility.
 **Examples in the system**:
 
 - **Repository Interfaces**:
-  - Can add new implementations (e.g., `MongoDbUserRepository`) without modifying existing code
+  - Can add new implementations (e.g., `JsonUserRepository`, `XmlUserRepository`) without modifying existing code
   - Example:
     ```java
     // New implementation without changing existing code
-    public class MongoDbUserRepository implements UserRepository {
-        // MongoDB implementation
+    public class JsonUserRepository implements UserRepository {
+        // JSON implementation
     }
     ```
 
@@ -155,7 +156,7 @@ Each class has a single, well-defined responsibility.
 
 - **Repository implementations**:
   ```java
-  UserRepository repo = new MySqlUserRepository();
+  UserRepository repo = new CsvUserRepository();
   // Can be replaced with any UserRepository implementation
   // Behavior remains consistent
   ```
@@ -202,7 +203,7 @@ interface UserRepository {
 - **DatabaseDormService depends on interfaces, not concrete classes**:
   ```java
   public class DatabaseDormService {
-      private final UserRepository userRepository;  // Interface, not MySqlUserRepository
+      private final UserRepository userRepository;  // Interface, not CsvUserRepository
       private final StudentRepository studentRepository;  // Interface
       
       public DatabaseDormService(
@@ -226,7 +227,7 @@ interface UserRepository {
 
 **Benefits**:
 - Easy to test (can inject mock repositories)
-- Easy to switch implementations (MySQL → MongoDB)
+- Easy to switch implementations (CSV → JSON → Database)
 - Loose coupling
 
 ---
@@ -250,10 +251,10 @@ interface UserRepository {
 
 ## File I/O Demonstrations
 
-### 1. Database I/O (MySQL)
-- All DAO implementations use JDBC for database operations
-- Proper exception handling for SQL errors
-- Connection management via HikariCP
+### 1. CSV Data Persistence
+- All DAO implementations use CSV files for data persistence
+- Proper exception handling for I/O errors
+- Located in `data/` directory
 
 ### 2. File Export (CSV)
 - **AdminDashboardDb.exportToCsv()** and **OwnerDashboardDb.exportToCsv()**:
@@ -289,41 +290,37 @@ Repository Interfaces:
   - BuildingAssignmentRepository
 
 Concrete Implementations:
-  - MySqlUserRepository implements UserRepository
-  - MySqlStudentRepository implements StudentRepository
-  - MySqlApplicationRepository implements ApplicationRepository
-  - MySqlAnnouncementRepository implements AnnouncementRepository
-  - MySqlMessageRepository implements MessageRepository
-  - MySqlBuildingAssignmentRepository implements BuildingAssignmentRepository
+  - CsvUserRepository implements UserRepository
+  - CsvStudentRepository implements StudentRepository
+  - CsvApplicationRepository implements ApplicationRepository
+  - CsvAnnouncementRepository implements AnnouncementRepository
+  - CsvMessageRepository implements MessageRepository
+  - CsvBuildingAssignmentRepository implements BuildingAssignmentRepository
 ```
 
 ---
 
 ## How to Run
 
-### 1. Setup MySQL Database
-```bash
-mysql -u root -p < src/main/resources/sql/simple_schema.sql
-```
+### 1. Prerequisites
+- Java 21 or later
+- Maven 3.8+
 
-### 2. Configure Database Connection (Optional)
-Set environment variables:
+### 2. Build the Application
 ```bash
-export DB_URL="jdbc:mysql://localhost:3306/dormdb?serverTimezone=UTC&useSSL=false"
-export DB_USER="root"
-export DB_PASS="your_password"
+mvn clean compile
 ```
 
 ### 3. Run the Application
 ```bash
-mvn clean javafx:run
+mvn javafx:run
 ```
 
 ### Default Login Credentials
 - **Admin**: username=`admin`, password=`admin123`
-- **Proctor**: username=`proctor1`, password=`proctor123`
+- **Proctor**: username=`proctor1`, password=`pass123`
 - **Owner**: username=`owner`, password=`owner123`
-- **Student**: username=`student1`, password=`student123`
+- **Student**: username=`student1`, password=`pass123`
 
 ---
 
@@ -362,7 +359,7 @@ mvn clean javafx:run
 - ✅ No code duplication
 
 ### I/O Operations
-- ✅ MySQL database (read/write)
+- ✅ CSV file persistence (read/write)
 - ✅ CSV file export
 - ✅ File chooser for documents
 - ✅ Proper exception handling
@@ -375,7 +372,7 @@ This system comprehensively demonstrates:
 1. All four OOP principles
 2. All five SOLID principles
 3. JavaFX GUI development
-4. MySQL database integration
+4. CSV file-based data persistence
 5. File I/O operations
 6. Clean code architecture
 7. Separation of concerns

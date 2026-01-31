@@ -14,8 +14,7 @@ import javafx.stage.Stage;
  * - OOP principles (Encapsulation, Abstraction, Inheritance, Polymorphism)
  * - SOLID principles (SRP, OCP, LSP, ISP, DIP)
  * - JavaFX for GUI
- * - MySQL for database persistence
- * - File I/O for document management and CSV export
+ * - CSV files for data persistence (stored in 'data' directory)
  */
 public class App extends Application {
     @Override

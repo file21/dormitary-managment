@@ -1,6 +1,6 @@
 # Dormitory Management System
 
-A comprehensive JavaFX desktop application for managing dormitory applications, assignments, and resident tracking with MySQL database integration.
+A comprehensive JavaFX desktop application for managing dormitory applications, assignments, and resident tracking with CSV file-based data persistence.
 
 ## Features
 
@@ -36,8 +36,7 @@ A comprehensive JavaFX desktop application for managing dormitory applications, 
 
 - **Java 21** - Core programming language
 - **JavaFX 21** - Desktop GUI framework
-- **MySQL** - Database (via JDBC)
-- **HikariCP** - Database connection pooling
+- **CSV Files** - Data persistence (stored in `data/` directory)
 - **Maven** - Build and dependency management
 
 ## OOP & SOLID Principles
@@ -59,62 +58,56 @@ See [SOLID_PRINCIPLES.md](SOLID_PRINCIPLES.md) for detailed documentation.
 
 ## Setup
 
-### 1. Install MySQL
+### 1. Prerequisites
+
+- Java 21 or later
+- Maven 3.8+
+
+### 2. Build the Application
 
 ```bash
-sudo apt-get install mysql-server
+mvn clean compile
 ```
 
-### 2. Create Database
+### 3. Run the Application
 
 ```bash
-mysql -u root -p < src/main/resources/sql/simple_schema.sql
+mvn javafx:run
 ```
 
-This creates:
-- Database: `dormdb`
-- Tables: users, students, applications, announcements, messages, building_assignments
-- Sample data (admin, proctor, owner, student accounts)
-
-### 3. Configure Database Connection (Optional)
-
-By default connects to `jdbc:mysql://localhost:3306/dormdb` with user `root` and no password.
-
-To customize, set environment variables:
-
-```bash
-export DB_URL="jdbc:mysql://localhost:3306/dormdb?serverTimezone=UTC&useSSL=false"
-export DB_USER="root"
-export DB_PASS="your_password"
-```
-
-### 4. Run the Application
-
-```bash
-mvn clean javafx:run
-```
-
-Or export JAVA_HOME first:
+Or export JAVA_HOME first if needed:
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-mvn clean javafx:run
+mvn javafx:run
 ```
+
+## Data Storage
+
+All data is stored in CSV files in the `data/` directory:
+- `users.csv` - Admin, proctor, and owner accounts
+- `students.csv` - Student accounts and information
+- `applications.csv` - Dormitory applications
+- `announcements.csv` - System announcements
+- `messages.csv` - User messages
+- `building_assignments.csv` - Proctor building assignments
+
+The `data/` directory is created automatically if it doesn't exist, and sample data is included.
 
 ## Default Login Credentials
 
 - **Admin**: username=`admin`, password=`admin123`
-- **Proctor**: username=`proctor1`, password=`proctor123`
+- **Proctor**: username=`proctor1`, password=`pass123`
 - **Owner**: username=`owner`, password=`owner123`
-- **Student**: username=`student1`, password=`student123`
+- **Student**: username=`student1`, password=`pass123`
 
 ## Project Structure
 
 ```
 src/main/java/dorm/
-├── dao/                    # Data Access Objects (interfaces + MySQL implementations)
+├── dao/                    # Data Access Objects (interfaces + CSV implementations)
 │   ├── *Repository.java    # DAO interfaces (ISP, DIP)
-│   ├── MySql*.java         # MySQL implementations
+│   ├── Csv*.java           # CSV file implementations
 │   └── DaoFactory.java     # Factory for creating DAOs
 ├── model/                  # Domain models
 │   ├── User.java           # Base user class
@@ -131,14 +124,22 @@ src/main/java/dorm/
 │   ├── ProctorDashboardDb.java
 │   └── OwnerDashboardDb.java
 ├── util/                   # Utilities
-│   ├── Db.java             # Database connection (HikariCP)
+│   ├── CsvHelper.java      # CSV file operations utility
 │   └── Validation.java
 └── App.java                # Main application entry point
+
+data/                       # CSV data files
+├── users.csv
+├── students.csv
+├── applications.csv
+├── announcements.csv
+├── messages.csv
+└── building_assignments.csv
 ```
 
 ## File I/O Operations
 
-1. **Database I/O** - All data persisted to MySQL via JDBC
+1. **CSV File I/O** - All data persisted to CSV files
 2. **CSV Export** - Export student lists to CSV files
 3. **File Upload** - FileChooser for selecting documents and payment slips
 
