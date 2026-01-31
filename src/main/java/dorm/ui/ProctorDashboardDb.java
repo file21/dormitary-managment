@@ -1,7 +1,7 @@
 package dorm.ui;
 
+import dorm.model.Building;
 import dorm.model.Student;
-import dorm.model.User;
 import dorm.service.DatabaseDormService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -16,24 +16,26 @@ import javafx.stage.Stage;
 import java.util.stream.Collectors;
 
 /**
- * Proctor dashboard UI.
- * Demonstrates role-based access control.
+ * Proctor dashboard UI - proctors login as buildings.
+ * Shows students assigned to this building and manages entry/withdrawal.
  */
 public class ProctorDashboardDb {
     private final DatabaseDormService service;
-    private final User proctor;
+    private final Building building;
     private final Stage stage;
     private final BorderPane root;
     private final TableView<Student> studentsTable;
     private final ListView<String> messageList;
+    private final Label occupancyLabel;
 
-    public ProctorDashboardDb(DatabaseDormService service, User proctor, Stage stage) {
+    public ProctorDashboardDb(DatabaseDormService service, Building building, Stage stage) {
         this.service = service;
-        this.proctor = proctor;
+        this.building = building;
         this.stage = stage;
         this.root = new BorderPane();
         this.studentsTable = new TableView<>();
         this.messageList = new ListView<>();
+        this.occupancyLabel = new Label();
         build();
         refresh();
     }
@@ -43,30 +45,24 @@ public class ProctorDashboardDb {
     }
 
     private void build() {
-        String buildingName = service.getBuildingAssignments().stream()
-                .filter(assign -> assign.getProctor().equals(proctor))
-                .map(assign -> assign.getBuildingName())
-                .findFirst()
-                .orElse("Unassigned");
-
-        // Header with logout button
-        Label headerLabel = new Label("Proctor Dashboard - " + proctor.getDisplayName() + " (" + buildingName + ")");
+        // Header with building info and logout button
+        Label headerLabel = new Label("Building: " + building.getName() + " (Proctor Dashboard)");
         headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
         
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(event -> logout());
         
-        HBox header = new HBox(20, headerLabel, logoutButton);
+        HBox header = new HBox(20, headerLabel, occupancyLabel, logoutButton);
         header.setPadding(new Insets(10));
         root.setTop(header);
 
         TabPane tabs = new TabPane();
-        tabs.getTabs().add(createBuildingTab(buildingName));
+        tabs.getTabs().add(createBuildingTab());
         tabs.getTabs().add(createMessagesTab());
         root.setCenter(tabs);
     }
 
-    private Tab createBuildingTab(String buildingName) {
+    private Tab createBuildingTab() {
         Tab tab = new Tab("Building Students");
         tab.setClosable(false);
 
@@ -88,7 +84,23 @@ public class ProctorDashboardDb {
         withdrawalCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getWithdrawalDate() == null ? "-" : cell.getValue().getWithdrawalDate()));
 
-        studentsTable.getColumns().addAll(nameCol, idCol, genderCol, entryCol, withdrawalCol);
+        TableColumn<Student, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(cell -> {
+            Student s = cell.getValue();
+            String status;
+            if (s.getEntryDate() != null && !s.getEntryDate().isBlank()) {
+                if (s.getWithdrawalDate() != null && !s.getWithdrawalDate().isBlank()) {
+                    status = "Withdrawn";
+                } else {
+                    status = "In Dorm";
+                }
+            } else {
+                status = "Assigned (Not Entered)";
+            }
+            return new javafx.beans.property.SimpleStringProperty(status);
+        });
+
+        studentsTable.getColumns().addAll(nameCol, idCol, genderCol, entryCol, withdrawalCol, statusCol);
         studentsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         Button registerEntryButton = new Button("Register Entry");
@@ -97,7 +109,12 @@ public class ProctorDashboardDb {
         registerEntryButton.setOnAction(event -> {
             Student selected = studentsTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                showAlert("Select Student", "Choose a student to register.");
+                showAlert("Select Student", "Choose a student to register entry.");
+                return;
+            }
+            if (selected.getEntryDate() != null && !selected.getEntryDate().isBlank() &&
+                (selected.getWithdrawalDate() == null || selected.getWithdrawalDate().isBlank())) {
+                showAlert("Already Entered", "This student has already entered the dorm.");
                 return;
             }
             try {
@@ -113,6 +130,14 @@ public class ProctorDashboardDb {
             Student selected = studentsTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 showAlert("Select Student", "Choose a student to withdraw.");
+                return;
+            }
+            if (selected.getEntryDate() == null || selected.getEntryDate().isBlank()) {
+                showAlert("Not Entered", "This student has not entered the dorm yet.");
+                return;
+            }
+            if (selected.getWithdrawalDate() != null && !selected.getWithdrawalDate().isBlank()) {
+                showAlert("Already Withdrawn", "This student has already withdrawn.");
                 return;
             }
             try {
@@ -139,7 +164,8 @@ public class ProctorDashboardDb {
 
         ComboBox<String> recipientBox = new ComboBox<>();
         recipientBox.setItems(FXCollections.observableArrayList(
-                service.getStudents().stream().map(Student::getUsername).collect(Collectors.toList())
+                service.getStudentsByBuilding(building.getName()).stream()
+                    .map(Student::getUsername).collect(Collectors.toList())
         ));
         recipientBox.setPromptText("Select Student");
         
@@ -153,7 +179,7 @@ public class ProctorDashboardDb {
                 return;
             }
             try {
-                service.sendMessage(proctor.getUsername(), recipientBox.getValue(), messageArea.getText().trim());
+                service.sendMessage(building.getName(), recipientBox.getValue(), messageArea.getText().trim());
                 messageArea.clear();
                 refresh();
             } catch (Exception e) {
@@ -161,7 +187,7 @@ public class ProctorDashboardDb {
             }
         });
 
-        VBox form = new VBox(10, new Label("Send Message"), recipientBox, messageArea, sendButton);
+        VBox form = new VBox(10, new Label("Send Message to Student"), recipientBox, messageArea, sendButton);
         form.setPadding(new Insets(10));
 
         VBox wrapper = new VBox(10, form, new Label("Message History"), messageList);
@@ -172,19 +198,22 @@ public class ProctorDashboardDb {
 
     private void refresh() {
         try {
-            String buildingName = service.getBuildingAssignments().stream()
-                    .filter(assign -> assign.getProctor().equals(proctor))
-                    .map(assign -> assign.getBuildingName())
-                    .findFirst()
-                    .orElse("Unassigned");
-
-            studentsTable.setItems(FXCollections.observableArrayList(service.getStudentsByBuilding(buildingName)));
+            studentsTable.setItems(FXCollections.observableArrayList(
+                service.getStudentsByBuilding(building.getName())
+            ));
 
             messageList.setItems(FXCollections.observableArrayList(
-                    service.getMessagesForUser(proctor.getUsername()).stream()
+                    service.getMessagesForUser(building.getName()).stream()
                             .map(message -> message.getSentAt() + " | " + message.getFromUser() + ": " + message.getContent())
                             .collect(Collectors.toList())
             ));
+            
+            // Update occupancy label
+            int occupancy = service.getBuildingOccupancy(building.getName());
+            int remaining = service.getBuildingRemainingCapacity(building.getName());
+            occupancyLabel.setText(String.format("Capacity: %d/%d (Remaining: %d)", 
+                occupancy, building.getMaxCapacity(), remaining));
+            occupancyLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
         } catch (Exception e) {
             showAlert("Error", "Failed to refresh: " + e.getMessage());
         }

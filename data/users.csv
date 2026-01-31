@@ -1,4 +1,3 @@
 id,username,password,role,display_name
 admin-001,admin,admin123,ADMIN,Main Admin
-proctor-001,proctor1,pass123,PROCTOR,Proctor One
 owner-001,owner,owner123,OWNER,System Owner

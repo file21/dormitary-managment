@@ -1,5 +1,6 @@
 package dorm.ui;
 
+import dorm.model.Building;
 import dorm.model.Gender;
 import dorm.model.Role;
 import dorm.model.Student;
@@ -25,7 +26,7 @@ import java.util.Optional;
 
 /**
  * Login view for the dormitory management system.
- * Demonstrates separation of concerns - UI logic separate from business logic.
+ * Handles authentication for: Admin/Owner (users), Students, and Buildings (proctors)
  */
 public class LoginViewDb {
     private final DatabaseDormService service;
@@ -54,6 +55,7 @@ public class LoginViewDb {
         form.setVgap(10);
 
         TextField usernameField = new TextField();
+        usernameField.setPromptText("Username or Building Name");
         PasswordField passwordField = new PasswordField();
         Button loginButton = new Button("Login");
 
@@ -70,15 +72,27 @@ public class LoginViewDb {
                 return;
             }
             
-            Optional<User> user = service.authenticate(username, password);
-            if (user.isEmpty()) {
+            Optional<Object> authResult = service.authenticate(username, password);
+            if (authResult.isEmpty()) {
                 showAlert("Login Failed", "Invalid username or password.");
                 return;
             }
-            switchToDashboard(user.get());
+            
+            Object authenticated = authResult.get();
+            switchToDashboard(authenticated);
         });
 
-        VBox wrapper = new VBox(10, new Label("Dormitory Management System"), form);
+        VBox info = new VBox(5,
+            new Label("Dormitory Management System"),
+            new Label(""),
+            new Label("Login Types:"),
+            new Label("• Admin/Owner: Use your username"),
+            new Label("• Student: Use your username"),
+            new Label("• Building (Proctor): Use building name (e.g., B501)")
+        );
+        info.setStyle("-fx-font-size: 12px;");
+        
+        VBox wrapper = new VBox(10, info, form);
         wrapper.setPadding(new Insets(20));
         tab.setContent(wrapper);
         return tab;
@@ -140,17 +154,30 @@ public class LoginViewDb {
         return tab;
     }
 
-    private void switchToDashboard(User user) {
+    private void switchToDashboard(Object authenticated) {
         Scene scene;
-        if (user.getRole() == Role.STUDENT) {
-            scene = new Scene(new StudentDashboardDb(service, (Student) user, stage).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.ADMIN) {
-            scene = new Scene(new AdminDashboardDb(service, user, stage).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.PROCTOR) {
-            scene = new Scene(new ProctorDashboardDb(service, user, stage).getRoot(), 1100, 700);
+        
+        if (authenticated instanceof Student) {
+            Student student = (Student) authenticated;
+            scene = new Scene(new StudentDashboardDb(service, student, stage).getRoot(), 1100, 700);
+        } else if (authenticated instanceof Building) {
+            Building building = (Building) authenticated;
+            scene = new Scene(new ProctorDashboardDb(service, building, stage).getRoot(), 1100, 700);
+        } else if (authenticated instanceof User) {
+            User user = (User) authenticated;
+            if (user.getRole() == Role.ADMIN) {
+                scene = new Scene(new AdminDashboardDb(service, user, stage).getRoot(), 1100, 700);
+            } else if (user.getRole() == Role.OWNER) {
+                scene = new Scene(new OwnerDashboardDb(service, user, stage).getRoot(), 1100, 700);
+            } else {
+                showAlert("Error", "Unknown user role.");
+                return;
+            }
         } else {
-            scene = new Scene(new OwnerDashboardDb(service, user, stage).getRoot(), 1100, 700);
+            showAlert("Error", "Unknown account type.");
+            return;
         }
+        
         stage.setScene(scene);
     }
 

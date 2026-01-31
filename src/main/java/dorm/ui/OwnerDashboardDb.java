@@ -1,6 +1,12 @@
 package dorm.ui;
 
-import dorm.model.*;
+import dorm.model.ApplicationStatus;
+import dorm.model.Building;
+import dorm.model.DormApplication;
+import dorm.model.Role;
+import dorm.model.SponsorshipType;
+import dorm.model.Student;
+import dorm.model.User;
 import dorm.service.DatabaseDormService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -18,11 +24,11 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Owner dashboard UI - has all admin features plus staff management.
- * Demonstrates inheritance of functionality and role hierarchy.
+ * Owner dashboard UI - extends admin capabilities with building and staff management.
  */
 public class OwnerDashboardDb {
     private final DatabaseDormService service;
@@ -30,10 +36,12 @@ public class OwnerDashboardDb {
     private final Stage stage;
     private final BorderPane root;
     private final TableView<DormApplication> applicationTable;
+    private final TableView<Building> buildingTable;
+    private final TableView<User> staffTable;
     private final ListView<String> announcementList;
     private final ListView<String> messageList;
-    private final ListView<String> staffList;
     private final TextArea detailsArea;
+    private final Label buildingCapacityLabel;
 
     public OwnerDashboardDb(DatabaseDormService service, User owner, Stage stage) {
         this.service = service;
@@ -41,12 +49,14 @@ public class OwnerDashboardDb {
         this.stage = stage;
         this.root = new BorderPane();
         this.applicationTable = new TableView<>();
+        this.buildingTable = new TableView<>();
+        this.staffTable = new TableView<>();
         this.announcementList = new ListView<>();
         this.messageList = new ListView<>();
-        this.staffList = new ListView<>();
         this.detailsArea = new TextArea();
         this.detailsArea.setEditable(false);
         this.detailsArea.setPrefRowCount(8);
+        this.buildingCapacityLabel = new Label();
         build();
         refresh();
     }
@@ -69,10 +79,11 @@ public class OwnerDashboardDb {
 
         TabPane tabs = new TabPane();
         tabs.getTabs().add(createApplicationsTab());
+        tabs.getTabs().add(createBuildingsTab());
+        tabs.getTabs().add(createStaffTab());
         tabs.getTabs().add(createAnnouncementsTab());
         tabs.getTabs().add(createMessagesTab());
         tabs.getTabs().add(createSearchTab());
-        tabs.getTabs().add(createStaffTab());
 
         root.setCenter(tabs);
     }
@@ -107,7 +118,6 @@ public class OwnerDashboardDb {
         applicationTable.getColumns().addAll(studentCol, idCol, sponsorCol, statusCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         
-        // Show details when selected
         applicationTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 showApplicationDetails(newVal);
@@ -125,9 +135,29 @@ public class OwnerDashboardDb {
         Button viewDocBtn = new Button("View Document");
         Button viewPaymentBtn = new Button("View Payment Slip");
 
-        TextField buildingField = new TextField();
-        buildingField.setPromptText("Building name");
-        buildingField.setPrefWidth(120);
+        ComboBox<String> buildingBox = new ComboBox<>();
+        buildingBox.setPromptText("Select Building");
+        buildingBox.setPrefWidth(150);
+        
+        buildingBox.setItems(FXCollections.observableArrayList(
+            service.getBuildings().stream()
+                .map(b -> b.getName() + " (" + service.getBuildingRemainingCapacity(b.getName()) + " available)")
+                .collect(Collectors.toList())
+        ));
+        
+        buildingBox.setOnAction(event -> {
+            String selected = buildingBox.getValue();
+            if (selected != null) {
+                String buildingName = selected.split(" \\(")[0];
+                int remaining = service.getBuildingRemainingCapacity(buildingName);
+                int occupancy = service.getBuildingOccupancy(buildingName);
+                Building building = service.findBuildingByName(buildingName).orElse(null);
+                if (building != null) {
+                    buildingCapacityLabel.setText(String.format("Capacity: %d/%d", occupancy, building.getMaxCapacity()));
+                }
+            }
+        });
+        
         Button assignBtn = new Button("Assign Building");
 
         approveBtn.setOnAction(event -> {
@@ -225,29 +255,35 @@ public class OwnerDashboardDb {
 
         assignBtn.setOnAction(event -> {
             DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
-            if (selected == null || buildingField.getText().isBlank()) {
-                showAlert("Missing Data", "Select an application and enter a building name.");
+            if (selected == null || buildingBox.getValue() == null) {
+                showAlert("Missing Data", "Select an application and a building.");
                 return;
             }
             if (!service.isReadyForAssignment(selected)) {
-                showAlert("Not Ready", "This student is not ready for building assignment. " +
-                    "Government students need Phase One approval. Self-sponsored need Phase Two approval.");
+                showAlert("Not Ready", "This student is not ready for building assignment.");
                 return;
             }
+            
+            String buildingName = buildingBox.getValue().split(" \\(")[0];
+            
+            if (!service.hasBuildingCapacity(buildingName)) {
+                showAlert("No Capacity", "This building is full. Please select another building.");
+                return;
+            }
+            
             try {
-                service.assignBuilding(selected.getStudent(), buildingField.getText().trim());
+                service.assignBuilding(selected.getStudent(), buildingName);
                 refresh();
-                showAlert("Assigned", "Building assigned successfully.");
+                showAlert("Assigned", "Student assigned to " + buildingName);
             } catch (Exception e) {
                 showAlert("Error", "Failed to assign: " + e.getMessage());
             }
         });
 
-        // Layout
         HBox actionRow1 = new HBox(10, new Label("Note:"), noteField, approveBtn, declineBtn, resubmitBtn);
         actionRow1.setPadding(new Insets(5));
         
-        HBox actionRow2 = new HBox(10, viewDocBtn, viewPaymentBtn, new Label("Building:"), buildingField, assignBtn);
+        HBox actionRow2 = new HBox(10, viewDocBtn, viewPaymentBtn, buildingBox, buildingCapacityLabel, assignBtn);
         actionRow2.setPadding(new Insets(5));
 
         VBox actions = new VBox(5, actionRow1, actionRow2);
@@ -298,6 +334,253 @@ public class OwnerDashboardDb {
         } catch (IOException e) {
             showAlert("Error", "Could not open file: " + e.getMessage());
         }
+    }
+
+    private Tab createBuildingsTab() {
+        Tab tab = new Tab("Buildings");
+        tab.setClosable(false);
+
+        // Building table
+        TableColumn<Building, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getName()));
+        nameCol.setPrefWidth(150);
+
+        TableColumn<Building, String> capacityCol = new TableColumn<>("Max Capacity");
+        capacityCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            String.valueOf(cell.getValue().getMaxCapacity())));
+        capacityCol.setPrefWidth(100);
+
+        TableColumn<Building, String> occupancyCol = new TableColumn<>("Current Occupancy");
+        occupancyCol.setCellValueFactory(cell -> {
+            int occupancy = service.getBuildingOccupancy(cell.getValue().getName());
+            return new javafx.beans.property.SimpleStringProperty(String.valueOf(occupancy));
+        });
+        occupancyCol.setPrefWidth(120);
+
+        TableColumn<Building, String> remainingCol = new TableColumn<>("Remaining");
+        remainingCol.setCellValueFactory(cell -> {
+            int remaining = service.getBuildingRemainingCapacity(cell.getValue().getName());
+            return new javafx.beans.property.SimpleStringProperty(String.valueOf(remaining));
+        });
+        remainingCol.setPrefWidth(100);
+
+        buildingTable.getColumns().addAll(nameCol, capacityCol, occupancyCol, remainingCol);
+        buildingTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // Add building form
+        TextField buildingNameField = new TextField();
+        buildingNameField.setPromptText("Building Name (e.g., B501)");
+        
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Building Password");
+        
+        TextField capacityField = new TextField();
+        capacityField.setPromptText("Max Capacity (e.g., 100)");
+
+        Button addButton = new Button("Add Building");
+        Button updateCapacityButton = new Button("Update Capacity");
+        Button deleteButton = new Button("Delete Building");
+
+        addButton.setOnAction(event -> {
+            String name = buildingNameField.getText().trim();
+            String password = passwordField.getText().trim();
+            String capacityStr = capacityField.getText().trim();
+            
+            if (name.isBlank() || password.isBlank() || capacityStr.isBlank()) {
+                showAlert("Missing Data", "All fields are required.");
+                return;
+            }
+            
+            int capacity;
+            try {
+                capacity = Integer.parseInt(capacityStr);
+                if (capacity <= 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                showAlert("Invalid Capacity", "Please enter a valid positive number for capacity.");
+                return;
+            }
+            
+            try {
+                service.addBuilding(name, password, capacity);
+                buildingNameField.clear();
+                passwordField.clear();
+                capacityField.clear();
+                refresh();
+                showAlert("Building Added", "Building " + name + " has been added.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to add building: " + e.getMessage());
+            }
+        });
+
+        updateCapacityButton.setOnAction(event -> {
+            Building selected = buildingTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Building", "Please select a building first.");
+                return;
+            }
+            
+            String capacityStr = capacityField.getText().trim();
+            if (capacityStr.isBlank()) {
+                showAlert("Enter Capacity", "Please enter the new capacity in the capacity field.");
+                return;
+            }
+            
+            int newCapacity;
+            try {
+                newCapacity = Integer.parseInt(capacityStr);
+                if (newCapacity <= 0) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException e) {
+                showAlert("Invalid Capacity", "Please enter a valid positive number.");
+                return;
+            }
+            
+            try {
+                selected.setMaxCapacity(newCapacity);
+                service.updateBuilding(selected);
+                capacityField.clear();
+                refresh();
+                showAlert("Updated", "Building capacity updated to " + newCapacity);
+            } catch (Exception e) {
+                showAlert("Error", "Failed to update: " + e.getMessage());
+            }
+        });
+
+        deleteButton.setOnAction(event -> {
+            Building selected = buildingTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Building", "Please select a building first.");
+                return;
+            }
+            
+            // Check if building has students
+            int occupancy = service.getBuildingOccupancy(selected.getName());
+            if (occupancy > 0) {
+                showAlert("Cannot Delete", "This building has " + occupancy + " students. Reassign them first.");
+                return;
+            }
+            
+            try {
+                service.deleteBuilding(selected);
+                refresh();
+                showAlert("Deleted", "Building " + selected.getName() + " has been deleted.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to delete: " + e.getMessage());
+            }
+        });
+
+        GridPane form = new GridPane();
+        form.setPadding(new Insets(10));
+        form.setHgap(10);
+        form.setVgap(10);
+        form.addRow(0, new Label("Building Name:"), buildingNameField);
+        form.addRow(1, new Label("Password:"), passwordField);
+        form.addRow(2, new Label("Max Capacity:"), capacityField);
+        
+        HBox buttons = new HBox(10, addButton, updateCapacityButton, deleteButton);
+        buttons.setPadding(new Insets(10));
+
+        VBox wrapper = new VBox(10, buildingTable, form, buttons);
+        wrapper.setPadding(new Insets(10));
+        tab.setContent(wrapper);
+        return tab;
+    }
+
+    private Tab createStaffTab() {
+        Tab tab = new Tab("Admin Staff");
+        tab.setClosable(false);
+
+        TableColumn<User, String> nameCol = new TableColumn<>("Name");
+        nameCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getDisplayName()));
+        nameCol.setPrefWidth(150);
+
+        TableColumn<User, String> usernameCol = new TableColumn<>("Username");
+        usernameCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getUsername()));
+        usernameCol.setPrefWidth(120);
+
+        TableColumn<User, String> roleCol = new TableColumn<>("Role");
+        roleCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getRole().name()));
+        roleCol.setPrefWidth(100);
+
+        staffTable.getColumns().addAll(nameCol, usernameCol, roleCol);
+        staffTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        // Add admin form
+        TextField adminNameField = new TextField();
+        adminNameField.setPromptText("Full Name");
+        
+        TextField adminUsernameField = new TextField();
+        adminUsernameField.setPromptText("Username");
+        
+        PasswordField adminPasswordField = new PasswordField();
+        adminPasswordField.setPromptText("Password");
+
+        Button addAdminButton = new Button("Add Admin");
+        Button removeButton = new Button("Remove Selected");
+
+        addAdminButton.setOnAction(event -> {
+            if (adminNameField.getText().isBlank() || adminUsernameField.getText().isBlank() || 
+                adminPasswordField.getText().isBlank()) {
+                showAlert("Missing Data", "All fields are required.");
+                return;
+            }
+            
+            try {
+                User newAdmin = new User(
+                    UUID.randomUUID().toString(),
+                    adminUsernameField.getText().trim(),
+                    adminPasswordField.getText().trim(),
+                    Role.ADMIN,
+                    adminNameField.getText().trim()
+                );
+                service.addUser(newAdmin);
+                adminNameField.clear();
+                adminUsernameField.clear();
+                adminPasswordField.clear();
+                refresh();
+                showAlert("Admin Added", "New admin account created.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to add admin: " + e.getMessage());
+            }
+        });
+
+        removeButton.setOnAction(event -> {
+            User selected = staffTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select User", "Please select a user first.");
+                return;
+            }
+            if (selected.getRole() == Role.OWNER) {
+                showAlert("Cannot Remove", "Cannot remove the owner account.");
+                return;
+            }
+            try {
+                service.removeUser(selected);
+                refresh();
+                showAlert("Removed", "User removed successfully.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to remove: " + e.getMessage());
+            }
+        });
+
+        GridPane form = new GridPane();
+        form.setPadding(new Insets(10));
+        form.setHgap(10);
+        form.setVgap(10);
+        form.addRow(0, new Label("Full Name:"), adminNameField);
+        form.addRow(1, new Label("Username:"), adminUsernameField);
+        form.addRow(2, new Label("Password:"), adminPasswordField);
+        
+        HBox buttons = new HBox(10, addAdminButton, removeButton);
+        buttons.setPadding(new Insets(10));
+
+        VBox wrapper = new VBox(10, staffTable, form, buttons);
+        wrapper.setPadding(new Insets(10));
+        tab.setContent(wrapper);
+        return tab;
     }
 
     private Tab createAnnouncementsTab() {
@@ -410,84 +693,6 @@ public class OwnerDashboardDb {
         return tab;
     }
 
-    private Tab createStaffTab() {
-        Tab tab = new Tab("Staff Management");
-        tab.setClosable(false);
-
-        TextField usernameField = new TextField();
-        TextField nameField = new TextField();
-        PasswordField passwordField = new PasswordField();
-        ComboBox<Role> roleBox = new ComboBox<>(FXCollections.observableArrayList(Role.ADMIN, Role.PROCTOR));
-        roleBox.setPromptText("Select Role");
-        TextField buildingField = new TextField();
-        buildingField.setPromptText("Building (for proctors)");
-
-        Button addButton = new Button("Add Staff");
-        Button removeButton = new Button("Remove Selected");
-
-        addButton.setOnAction(event -> {
-            if (usernameField.getText().isBlank() || nameField.getText().isBlank() || 
-                passwordField.getText().isBlank() || roleBox.getValue() == null) {
-                showAlert("Missing Data", "Fill all staff details.");
-                return;
-            }
-            try {
-                User staff = new User(java.util.UUID.randomUUID().toString(), 
-                    usernameField.getText().trim(), 
-                    passwordField.getText().trim(), 
-                    roleBox.getValue(), 
-                    nameField.getText().trim());
-                service.addUser(staff);
-                if (roleBox.getValue() == Role.PROCTOR) {
-                    service.assignBuildingToProctor(staff, buildingField.getText().isBlank() ? "Unassigned" : buildingField.getText().trim());
-                }
-                usernameField.clear();
-                nameField.clear();
-                passwordField.clear();
-                buildingField.clear();
-                refresh();
-                showAlert("Staff Added", "New staff member added successfully.");
-            } catch (Exception e) {
-                showAlert("Error", "Failed to add staff: " + e.getMessage());
-            }
-        });
-
-        removeButton.setOnAction(event -> {
-            String selected = staffList.getSelectionModel().getSelectedItem();
-            if (selected == null) {
-                showAlert("Select Staff", "Choose a staff member to remove.");
-                return;
-            }
-            try {
-                service.getUsers().stream()
-                        .filter(user -> (user.getRole() == Role.ADMIN || user.getRole() == Role.PROCTOR) && 
-                                       selected.startsWith(user.getUsername()))
-                        .findFirst()
-                        .ifPresent(service::removeUser);
-                refresh();
-                showAlert("Staff Removed", "Staff member removed.");
-            } catch (Exception e) {
-                showAlert("Error", "Failed to remove staff: " + e.getMessage());
-            }
-        });
-
-        GridPane form = new GridPane();
-        form.setPadding(new Insets(10));
-        form.setHgap(10);
-        form.setVgap(10);
-        form.addRow(0, new Label("Username"), usernameField);
-        form.addRow(1, new Label("Full Name"), nameField);
-        form.addRow(2, new Label("Password"), passwordField);
-        form.addRow(3, new Label("Role"), roleBox);
-        form.addRow(4, new Label("Building (proctors)"), buildingField);
-        form.addRow(5, addButton, removeButton);
-
-        VBox wrapper = new VBox(10, form, new Label("Current Staff"), staffList);
-        wrapper.setPadding(new Insets(10));
-        tab.setContent(wrapper);
-        return tab;
-    }
-
     private void exportToCsv() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Student List");
@@ -534,6 +739,12 @@ public class OwnerDashboardDb {
     private void refresh() {
         try {
             applicationTable.setItems(FXCollections.observableArrayList(service.getApplications()));
+            buildingTable.setItems(FXCollections.observableArrayList(service.getBuildings()));
+            staffTable.setItems(FXCollections.observableArrayList(
+                service.getUsers().stream()
+                    .filter(u -> u.getRole() == Role.ADMIN || u.getRole() == Role.OWNER)
+                    .collect(Collectors.toList())
+            ));
             announcementList.setItems(FXCollections.observableArrayList(
                     service.getAnnouncements().stream()
                             .map(announcement -> announcement.getTitle() + " - " + announcement.getBody())
@@ -542,12 +753,6 @@ public class OwnerDashboardDb {
             messageList.setItems(FXCollections.observableArrayList(
                     service.getMessagesForUser(owner.getUsername()).stream()
                             .map(message -> message.getSentAt() + " | " + message.getFromUser() + ": " + message.getContent())
-                            .collect(Collectors.toList())
-            ));
-            staffList.setItems(FXCollections.observableArrayList(
-                    service.getUsers().stream()
-                            .filter(user -> user.getRole() == Role.ADMIN || user.getRole() == Role.PROCTOR)
-                            .map(user -> user.getUsername() + " (" + user.getRole().name() + ")")
                             .collect(Collectors.toList())
             ));
         } catch (Exception e) {

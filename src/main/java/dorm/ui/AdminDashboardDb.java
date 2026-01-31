@@ -1,6 +1,7 @@
 package dorm.ui;
 
 import dorm.model.ApplicationStatus;
+import dorm.model.Building;
 import dorm.model.DormApplication;
 import dorm.model.SponsorshipType;
 import dorm.model.Student;
@@ -25,7 +26,7 @@ import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
- * Admin dashboard UI with application review and document viewing.
+ * Admin dashboard UI with application review, document viewing, and building assignment.
  */
 public class AdminDashboardDb {
     private final DatabaseDormService service;
@@ -36,6 +37,7 @@ public class AdminDashboardDb {
     private final ListView<String> announcementList;
     private final ListView<String> messageList;
     private final TextArea detailsArea;
+    private final Label buildingCapacityLabel;
 
     public AdminDashboardDb(DatabaseDormService service, User admin, Stage stage) {
         this.service = service;
@@ -48,6 +50,7 @@ public class AdminDashboardDb {
         this.detailsArea = new TextArea();
         this.detailsArea.setEditable(false);
         this.detailsArea.setPrefRowCount(8);
+        this.buildingCapacityLabel = new Label();
         build();
         refresh();
     }
@@ -125,9 +128,31 @@ public class AdminDashboardDb {
         Button viewDocBtn = new Button("View Document");
         Button viewPaymentBtn = new Button("View Payment Slip");
 
-        TextField buildingField = new TextField();
-        buildingField.setPromptText("Building name");
-        buildingField.setPrefWidth(120);
+        // Building selection with capacity display
+        ComboBox<String> buildingBox = new ComboBox<>();
+        buildingBox.setPromptText("Select Building");
+        buildingBox.setPrefWidth(150);
+        
+        // Populate building dropdown
+        buildingBox.setItems(FXCollections.observableArrayList(
+            service.getBuildings().stream()
+                .map(b -> b.getName() + " (" + service.getBuildingRemainingCapacity(b.getName()) + " available)")
+                .collect(Collectors.toList())
+        ));
+        
+        buildingBox.setOnAction(event -> {
+            String selected = buildingBox.getValue();
+            if (selected != null) {
+                String buildingName = selected.split(" \\(")[0];
+                int remaining = service.getBuildingRemainingCapacity(buildingName);
+                int occupancy = service.getBuildingOccupancy(buildingName);
+                Building building = service.findBuildingByName(buildingName).orElse(null);
+                if (building != null) {
+                    buildingCapacityLabel.setText(String.format("Capacity: %d/%d", occupancy, building.getMaxCapacity()));
+                }
+            }
+        });
+        
         Button assignBtn = new Button("Assign Building");
 
         approveBtn.setOnAction(event -> {
@@ -225,8 +250,8 @@ public class AdminDashboardDb {
 
         assignBtn.setOnAction(event -> {
             DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
-            if (selected == null || buildingField.getText().isBlank()) {
-                showAlert("Missing Data", "Select an application and enter a building name.");
+            if (selected == null || buildingBox.getValue() == null) {
+                showAlert("Missing Data", "Select an application and a building.");
                 return;
             }
             if (!service.isReadyForAssignment(selected)) {
@@ -234,10 +259,18 @@ public class AdminDashboardDb {
                     "Government students need Phase One approval. Self-sponsored need Phase Two approval.");
                 return;
             }
+            
+            String buildingName = buildingBox.getValue().split(" \\(")[0];
+            
+            if (!service.hasBuildingCapacity(buildingName)) {
+                showAlert("No Capacity", "This building is full. Please select another building.");
+                return;
+            }
+            
             try {
-                service.assignBuilding(selected.getStudent(), buildingField.getText().trim());
+                service.assignBuilding(selected.getStudent(), buildingName);
                 refresh();
-                showAlert("Assigned", "Building assigned successfully.");
+                showAlert("Assigned", "Student assigned to " + buildingName);
             } catch (Exception e) {
                 showAlert("Error", "Failed to assign: " + e.getMessage());
             }
@@ -247,7 +280,7 @@ public class AdminDashboardDb {
         HBox actionRow1 = new HBox(10, new Label("Note:"), noteField, approveBtn, declineBtn, resubmitBtn);
         actionRow1.setPadding(new Insets(5));
         
-        HBox actionRow2 = new HBox(10, viewDocBtn, viewPaymentBtn, new Label("Building:"), buildingField, assignBtn);
+        HBox actionRow2 = new HBox(10, viewDocBtn, viewPaymentBtn, buildingBox, buildingCapacityLabel, assignBtn);
         actionRow2.setPadding(new Insets(5));
 
         VBox actions = new VBox(5, actionRow1, actionRow2);

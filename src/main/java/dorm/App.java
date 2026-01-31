@@ -26,7 +26,7 @@ public class App extends Application {
             DaoFactory.createApplicationRepository(),
             DaoFactory.createAnnouncementRepository(),
             DaoFactory.createMessageRepository(),
-            DaoFactory.createBuildingAssignmentRepository()
+            DaoFactory.createBuildingRepository()
         );
         
         LoginViewDb loginView = new LoginViewDb(service, stage);

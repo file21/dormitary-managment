@@ -15,7 +15,7 @@ public class DaoFactory {
     private static ApplicationRepository applicationRepository;
     private static AnnouncementRepository announcementRepository;
     private static MessageRepository messageRepository;
-    private static BuildingAssignmentRepository buildingAssignmentRepository;
+    private static BuildingRepository buildingRepository;
     
     /**
      * Creates and returns a configured UserRepository
@@ -68,12 +68,12 @@ public class DaoFactory {
     }
     
     /**
-     * Creates and returns a configured BuildingAssignmentRepository
+     * Creates and returns a configured BuildingRepository
      */
-    public static BuildingAssignmentRepository createBuildingAssignmentRepository() {
-        if (buildingAssignmentRepository == null) {
-            buildingAssignmentRepository = new CsvBuildingAssignmentRepository(createUserRepository());
+    public static BuildingRepository createBuildingRepository() {
+        if (buildingRepository == null) {
+            buildingRepository = new CsvBuildingRepository();
         }
-        return buildingAssignmentRepository;
+        return buildingRepository;
     }
 }

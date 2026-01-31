@@ -25,11 +25,10 @@ public class DatabaseDormService {
     private final ApplicationRepository applicationRepository;
     private final AnnouncementRepository announcementRepository;
     private final MessageRepository messageRepository;
-    private final BuildingAssignmentRepository buildingAssignmentRepository;
+    private final BuildingRepository buildingRepository;
     
     /**
      * Constructor injection - demonstrates Dependency Inversion Principle
-     * Service depends on abstractions (interfaces), not concrete classes
      */
     public DatabaseDormService(
             UserRepository userRepository,
@@ -37,24 +36,45 @@ public class DatabaseDormService {
             ApplicationRepository applicationRepository,
             AnnouncementRepository announcementRepository,
             MessageRepository messageRepository,
-            BuildingAssignmentRepository buildingAssignmentRepository) {
+            BuildingRepository buildingRepository) {
         
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
         this.applicationRepository = applicationRepository;
         this.announcementRepository = announcementRepository;
         this.messageRepository = messageRepository;
-        this.buildingAssignmentRepository = buildingAssignmentRepository;
+        this.buildingRepository = buildingRepository;
     }
     
     // ========== Authentication ==========
     
     /**
-     * Authenticate a user with username and password
+     * Authenticate a user - checks users, students, and buildings
+     * Returns Object that can be User, Student, or Building
      */
-    public Optional<User> authenticate(String username, String password) {
-        return userRepository.findByUsername(username)
-                .filter(user -> user.getPassword().equals(password));
+    public Optional<Object> authenticate(String username, String password) {
+        // Check admin/owner users first
+        Optional<User> user = userRepository.findByUsername(username)
+                .filter(u -> u.getPassword().equals(password));
+        if (user.isPresent()) {
+            return Optional.of(user.get());
+        }
+        
+        // Check students
+        for (Student student : studentRepository.findAll()) {
+            if (student.getUsername().equals(username) && student.getPassword().equals(password)) {
+                return Optional.of(student);
+            }
+        }
+        
+        // Check buildings (proctor login)
+        Optional<Building> building = buildingRepository.findByName(username)
+                .filter(b -> b.getPassword().equals(password));
+        if (building.isPresent()) {
+            return Optional.of(building.get());
+        }
+        
+        return Optional.empty();
     }
     
     // ========== Student Management ==========
@@ -261,7 +281,83 @@ public class DatabaseDormService {
         return application.getStatus() == ApplicationStatus.PHASE_TWO_APPROVED;
     }
     
-    // ========== Building Assignment ==========
+    // ========== Building Management ==========
+    
+    /**
+     * Get all buildings
+     */
+    public List<Building> getBuildings() {
+        return buildingRepository.findAll();
+    }
+    
+    /**
+     * Find building by name
+     */
+    public Optional<Building> findBuildingByName(String name) {
+        return buildingRepository.findByName(name);
+    }
+    
+    /**
+     * Add a new building (proctor account)
+     */
+    public Building addBuilding(String name, String password, int maxCapacity) {
+        Building building = new Building(
+            UUID.randomUUID().toString(),
+            name,
+            password,
+            maxCapacity
+        );
+        buildingRepository.save(building);
+        return building;
+    }
+    
+    /**
+     * Update building (e.g., change capacity)
+     */
+    public void updateBuilding(Building building) {
+        buildingRepository.update(building);
+    }
+    
+    /**
+     * Delete a building
+     */
+    public void deleteBuilding(Building building) {
+        buildingRepository.delete(building);
+    }
+    
+    /**
+     * Get current occupancy of a building (students with entry date and no withdrawal)
+     */
+    public int getBuildingOccupancy(String buildingName) {
+        int count = 0;
+        for (Student student : studentRepository.findByBuilding(buildingName)) {
+            // Count only students who have entered and not withdrawn
+            if (student.getEntryDate() != null && !student.getEntryDate().isBlank()) {
+                if (student.getWithdrawalDate() == null || student.getWithdrawalDate().isBlank()) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Get remaining capacity of a building
+     */
+    public int getBuildingRemainingCapacity(String buildingName) {
+        Optional<Building> building = buildingRepository.findByName(buildingName);
+        if (building.isEmpty()) {
+            return 0;
+        }
+        return building.get().getMaxCapacity() - getBuildingOccupancy(buildingName);
+    }
+    
+    /**
+     * Check if building has available space
+     */
+    public boolean hasBuildingCapacity(String buildingName) {
+        return getBuildingRemainingCapacity(buildingName) > 0;
+    }
     
     /**
      * Assign a student to a building
@@ -280,7 +376,7 @@ public class DatabaseDormService {
     }
     
     /**
-     * Register student entry to dormitory
+     * Register student entry to dormitory (affects occupancy)
      */
     public void registerEntry(Student student) {
         student.setEntryDate(LocalDate.now().toString());
@@ -289,30 +385,14 @@ public class DatabaseDormService {
     }
     
     /**
-     * Register student withdrawal from dormitory
+     * Register student withdrawal from dormitory (frees up capacity)
      */
     public void registerWithdrawal(Student student) {
         student.setWithdrawalDate(LocalDate.now().toString());
         studentRepository.update(student);
     }
     
-    // ========== Proctor Building Assignment ==========
-    
-    /**
-     * Get all building assignments
-     */
-    public List<BuildingAssignment> getBuildingAssignments() {
-        return buildingAssignmentRepository.findAll();
-    }
-    
-    /**
-     * Assign a building to a proctor
-     */
-    public void assignBuildingToProctor(User proctor, String buildingName) {
-        buildingAssignmentRepository.save(proctor, buildingName);
-    }
-    
-    // ========== User Management ==========
+    // ========== User Management (Admin/Owner only) ==========
     
     /**
      * Get all users
@@ -329,7 +409,7 @@ public class DatabaseDormService {
     }
     
     /**
-     * Add a new user (admin or proctor)
+     * Add a new user (admin only - proctors are now buildings)
      */
     public void addUser(User user) {
         userRepository.save(user);
@@ -339,11 +419,6 @@ public class DatabaseDormService {
      * Remove a user
      */
     public void removeUser(User user) {
-        // Remove building assignment if proctor
-        if (user.getRole() == Role.PROCTOR) {
-            buildingAssignmentRepository.deleteByProctor(user);
-        }
-        
         userRepository.delete(user);
     }
     
