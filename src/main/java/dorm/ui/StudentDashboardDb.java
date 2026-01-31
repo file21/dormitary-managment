@@ -41,7 +41,7 @@ public class StudentDashboardDb {
     }
 
     private void build() {
-        Label headerLabel = new Label("Welcome, " + student.getDisplayName());
+        Label headerLabel = new Label("Welcome, " + student.getDisplayName() + " (ID: " + student.getStudentId() + ")");
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
         Button logoutButton = new Button("Logout");
