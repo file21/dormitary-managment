@@ -50,14 +50,15 @@ public class DatabaseDormService {
     // ========== Student Management ==========
     
     public Student registerStudent(String username, String password, String fullName, 
-                                   String studentId, Gender gender) {
+                                   String studentId, Gender gender, College college) {
         Student student = new Student(
             UUID.randomUUID().toString(),
             username,
             password,
             fullName,
             studentId,
-            gender
+            gender,
+            college
         );
         
         studentRepository.save(student);

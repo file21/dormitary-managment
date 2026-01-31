@@ -100,6 +100,12 @@ public class AdminDashboardDb {
             return new javafx.beans.property.SimpleStringProperty(g != null ? g.name() : "-");
         });
 
+        TableColumn<DormApplication, String> collegeCol = new TableColumn<>("College");
+        collegeCol.setCellValueFactory(cell -> {
+            College c = cell.getValue().getStudent().getCollege();
+            return new javafx.beans.property.SimpleStringProperty(c != null ? c.getAcronym() : "-");
+        });
+
         TableColumn<DormApplication, String> residencyCol = new TableColumn<>("Residency");
         residencyCol.setCellValueFactory(cell -> {
             Residency r = cell.getValue().getStudent().getResidency();
@@ -132,15 +138,11 @@ public class AdminDashboardDb {
         submittedCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             safe(cell.getValue().getSubmittedDate())));
 
-        TableColumn<DormApplication, String> responseCol = new TableColumn<>("Last Response");
-        responseCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-            safe(cell.getValue().getLatestResponse())));
-
         TableColumn<DormApplication, String> buildingCol = new TableColumn<>("Building");
         buildingCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getAssignedBuilding()));
 
-        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, genderCol, residencyCol, subcityCol, woredaCol, sponsorCol, statusCol, transactionCol, submittedCol, responseCol, buildingCol);
+        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, genderCol, collegeCol, residencyCol, subcityCol, woredaCol, sponsorCol, statusCol, transactionCol, submittedCol, buildingCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         applicationTable.setEditable(true);
 
@@ -474,6 +476,7 @@ public class AdminDashboardDb {
         nameField.setDisable(true);
         ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
         genderBox.setDisable(true);
+        Label collegeLabel = new Label();
         ComboBox<Residency> residencyBox = new ComboBox<>(FXCollections.observableArrayList(Residency.values()));
         residencyBox.setDisable(true);
         TextField cityField = new TextField();
@@ -485,18 +488,22 @@ public class AdminDashboardDb {
         TextField buildingField = new TextField();
         buildingField.setDisable(true);
         Label statusLabel = new Label();
+        Label responseHistoryLabel = new Label();
+        responseHistoryLabel.setWrapText(true);
         Button saveButton = new Button("Save Changes");
         saveButton.setDisable(true);
 
         editGrid.addRow(0, new Label("Name"), nameField);
         editGrid.addRow(1, new Label("Gender"), genderBox);
-        editGrid.addRow(2, new Label("Residency"), residencyBox);
-        editGrid.addRow(3, new Label("City"), cityField);
-        editGrid.addRow(4, new Label("Subcity"), subcityField);
-        editGrid.addRow(5, new Label("Woreda"), woredaField);
-        editGrid.addRow(6, new Label("Building"), buildingField);
-        editGrid.addRow(7, new Label("Status"), statusLabel);
-        editGrid.add(saveButton, 1, 8);
+        editGrid.addRow(2, new Label("College"), collegeLabel);
+        editGrid.addRow(3, new Label("Residency"), residencyBox);
+        editGrid.addRow(4, new Label("City"), cityField);
+        editGrid.addRow(5, new Label("Subcity"), subcityField);
+        editGrid.addRow(6, new Label("Woreda"), woredaField);
+        editGrid.addRow(7, new Label("Building"), buildingField);
+        editGrid.addRow(8, new Label("Status"), statusLabel);
+        editGrid.addRow(9, new Label("Response History"), responseHistoryLabel);
+        editGrid.add(saveButton, 1, 10);
 
         final Student[] foundStudent = {null};
 
@@ -530,6 +537,7 @@ public class AdminDashboardDb {
             nameField.setDisable(false);
             genderBox.setValue(s.getGender());
             genderBox.setDisable(false);
+            collegeLabel.setText(s.getCollege() != null ? s.getCollege().getFullName() : "-");
             residencyBox.setValue(s.getResidency());
             residencyBox.setDisable(false);
             cityField.setText(safe(s.getCity()));
@@ -541,10 +549,15 @@ public class AdminDashboardDb {
             buildingField.setText(s.getAssignedBuilding());
             buildingField.setDisable(false);
             
-            String status = service.getApplicationForStudent(s)
-                    .map(app -> app.getStatus().name())
-                    .orElse("No application");
-            statusLabel.setText(status);
+            Optional<DormApplication> app = service.getApplicationForStudent(s);
+            if (app.isPresent()) {
+                statusLabel.setText(app.get().getStatus().name());
+                String history = app.get().getResponseHistory();
+                responseHistoryLabel.setText(history != null && !history.isBlank() ? history.replace(";", "\n") : "-");
+            } else {
+                statusLabel.setText("No application");
+                responseHistoryLabel.setText("-");
+            }
             saveButton.setDisable(false);
         });
 

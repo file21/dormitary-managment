@@ -3,6 +3,7 @@ package dorm.model;
 public class Student extends User {
     private final String studentId;
     private Gender gender;
+    private College college;
     
     // Phase One - Address info
     private Residency residency;
@@ -20,10 +21,11 @@ public class Student extends User {
     // Assignment
     private String assignedBuilding;
 
-    public Student(String id, String username, String password, String displayName, String studentId, Gender gender) {
+    public Student(String id, String username, String password, String displayName, String studentId, Gender gender, College college) {
         super(id, username, password, Role.STUDENT, displayName);
         this.studentId = studentId;
         this.gender = gender;
+        this.college = college;
         this.assignedBuilding = "unassigned";
     }
 
@@ -37,6 +39,14 @@ public class Student extends User {
 
     public void setGender(Gender gender) {
         this.gender = gender;
+    }
+
+    public College getCollege() {
+        return college;
+    }
+
+    public void setCollege(College college) {
+        this.college = college;
     }
 
     public Residency getResidency() {

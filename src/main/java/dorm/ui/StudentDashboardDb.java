@@ -18,12 +18,13 @@ import java.util.stream.Collectors;
 
 public class StudentDashboardDb {
     private final DatabaseDormService service;
-    private final Student student;
+    private Student student;  // Not final - can be refreshed
     private final Stage stage;
     private final BorderPane root;
     private final ListView<Announcement> announcementListView;
     private final ListView<String> messageList;
-    private Tab phaseTwoTab;
+    private TabPane tabs;
+    private Label statusLabel;
 
     public StudentDashboardDb(DatabaseDormService service, Student student, Stage stage) {
         this.service = service;
@@ -45,7 +46,7 @@ public class StudentDashboardDb {
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
         Button refreshButton = new Button("Refresh");
-        refreshButton.setOnAction(event -> refresh());
+        refreshButton.setOnAction(event -> refreshAll());
         
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(event -> logout());
@@ -54,11 +55,10 @@ public class StudentDashboardDb {
         header.setPadding(new Insets(10));
         root.setTop(header);
 
-        TabPane tabs = new TabPane();
+        tabs = new TabPane();
         tabs.getTabs().add(createProfileTab());
         tabs.getTabs().add(createPhaseOneTab());
-        phaseTwoTab = createPhaseTwoTab();
-        tabs.getTabs().add(phaseTwoTab);
+        tabs.getTabs().add(createPhaseTwoTab());
         tabs.getTabs().add(createAnnouncementsTab());
         tabs.getTabs().add(createMessagesTab());
         
@@ -77,16 +77,23 @@ public class StudentDashboardDb {
         grid.addRow(0, new Label("Name:"), new Label(student.getDisplayName()));
         grid.addRow(1, new Label("Student ID:"), new Label(student.getStudentId()));
         grid.addRow(2, new Label("Gender:"), new Label(student.getGender() != null ? student.getGender().name() : "-"));
-        grid.addRow(3, new Label("Sponsorship:"), new Label(student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-"));
-        grid.addRow(4, new Label("Building:"), new Label(student.getAssignedBuilding()));
+        grid.addRow(3, new Label("College:"), new Label(student.getCollege() != null ? student.getCollege().getAcronym() : "-"));
+        grid.addRow(4, new Label("Sponsorship:"), new Label(student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-"));
+        grid.addRow(5, new Label("Building:"), new Label(student.getAssignedBuilding()));
         
-        String status = service.getApplicationForStudent(student)
-                .map(app -> app.getStatus().name())
-                .orElse("Not Applied");
-        grid.addRow(5, new Label("Status:"), new Label(status));
+        statusLabel = new Label();
+        updateStatusLabel();
+        grid.addRow(6, new Label("Status:"), statusLabel);
 
         tab.setContent(grid);
         return tab;
+    }
+
+    private void updateStatusLabel() {
+        String status = service.getApplicationForStudent(student)
+                .map(app -> app.getStatus().name())
+                .orElse("Not Applied");
+        statusLabel.setText(status);
     }
 
     private Tab createPhaseOneTab() {
@@ -102,10 +109,14 @@ public class StudentDashboardDb {
         ComboBox<Residency> residencyBox = new ComboBox<>(FXCollections.observableArrayList(Residency.values()));
         TextField cityField = new TextField();
         TextField subcityField = new TextField();
+        
+        // Woreda - positive integer only
         TextField woredaField = new TextField();
+        woredaField.setPromptText("Enter number");
+        
         TextField disabilityField = new TextField();
         Button submitButton = new Button("Submit Phase 1");
-        Label statusLabel = new Label();
+        Label phaseStatusLabel = new Label();
 
         if (student.getSponsorshipType() != null) sponsorshipBox.setValue(student.getSponsorshipType());
         if (student.getResidency() != null) residencyBox.setValue(student.getResidency());
@@ -118,15 +129,15 @@ public class StudentDashboardDb {
         form.addRow(1, new Label("Residency"), residencyBox);
         form.addRow(2, new Label("City"), cityField);
         form.addRow(3, new Label("Subcity"), subcityField);
-        form.addRow(4, new Label("Woreda"), woredaField);
+        form.addRow(4, new Label("Woreda (number)"), woredaField);
         form.addRow(5, new Label("Disability (optional)"), disabilityField);
         form.add(submitButton, 1, 6);
-        form.add(statusLabel, 1, 7);
+        form.add(phaseStatusLabel, 1, 7);
 
         Optional<DormApplication> existingApp = service.getApplicationForStudent(student);
         if (existingApp.isPresent()) {
             ApplicationStatus appStatus = existingApp.get().getStatus();
-            statusLabel.setText("Status: " + appStatus.name());
+            phaseStatusLabel.setText("Status: " + appStatus.name());
             
             if (appStatus != ApplicationStatus.PHASE_ONE_PENDING && 
                 appStatus != ApplicationStatus.PHASE_ONE_RESUBMIT) {
@@ -141,7 +152,7 @@ public class StudentDashboardDb {
             
             String note = existingApp.get().getAdminNote();
             if (note != null && !note.isBlank()) {
-                statusLabel.setText("Status: " + appStatus.name() + " | Note: " + note);
+                phaseStatusLabel.setText("Status: " + appStatus.name() + " | Note: " + note);
             }
         }
 
@@ -153,6 +164,19 @@ public class StudentDashboardDb {
                 return;
             }
             
+            // Validate woreda is positive integer
+            String woredaText = woredaField.getText().trim();
+            try {
+                int woredaNum = Integer.parseInt(woredaText);
+                if (woredaNum <= 0) {
+                    showAlert("Woreda must be a positive number");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                showAlert("Woreda must be a valid positive number");
+                return;
+            }
+            
             try {
                 service.submitPhaseOneApplication(
                     student,
@@ -160,12 +184,12 @@ public class StudentDashboardDb {
                     residencyBox.getValue(),
                     cityField.getText().trim(),
                     subcityField.getText().trim(),
-                    woredaField.getText().trim(),
+                    woredaText,
                     disabilityField.getText().trim()
                 );
-                statusLabel.setText("Status: PHASE_ONE_PENDING");
+                phaseStatusLabel.setText("Status: PHASE_ONE_PENDING");
                 showAlert("Phase 1 submitted");
-                refresh();
+                refreshAll();
             } catch (Exception e) {
                 showAlert("Failed: " + e.getMessage());
             }
@@ -188,7 +212,7 @@ public class StudentDashboardDb {
         TextField emergencyPhoneField = new TextField();
         TextField transactionIdField = new TextField();
         Button submitButton = new Button("Submit Phase 2");
-        Label statusLabel = new Label();
+        Label phaseStatusLabel = new Label();
 
         if (student.getEmergencyContactName() != null) emergencyNameField.setText(student.getEmergencyContactName());
         if (student.getEmergencyContactPhone() != null) emergencyPhoneField.setText(student.getEmergencyContactPhone());
@@ -201,12 +225,12 @@ public class StudentDashboardDb {
         form.addRow(2, transactionLabel, transactionIdField);
         
         form.add(submitButton, 1, 3);
-        form.add(statusLabel, 1, 4);
+        form.add(phaseStatusLabel, 1, 4);
 
         boolean canFillPhaseTwo = service.canFillPhaseTwo(student);
         
         if (!canFillPhaseTwo) {
-            statusLabel.setText("Complete Phase 1 first and wait for approval");
+            phaseStatusLabel.setText("Complete Phase 1 first and wait for approval");
             emergencyNameField.setDisable(true);
             emergencyPhoneField.setDisable(true);
             transactionIdField.setDisable(true);
@@ -220,7 +244,7 @@ public class StudentDashboardDb {
                     appStatus == ApplicationStatus.PHASE_TWO_APPROVED ||
                     appStatus == ApplicationStatus.PHASE_TWO_DECLINED ||
                     appStatus == ApplicationStatus.ASSIGNED) {
-                    statusLabel.setText("Status: " + appStatus.name());
+                    phaseStatusLabel.setText("Status: " + appStatus.name());
                     submitButton.setDisable(true);
                     emergencyNameField.setDisable(true);
                     emergencyPhoneField.setDisable(true);
@@ -248,9 +272,9 @@ public class StudentDashboardDb {
                     emergencyPhoneField.getText().trim(),
                     transactionIdField.getText().trim()
                 );
-                statusLabel.setText("Status: PHASE_TWO_PENDING");
+                phaseStatusLabel.setText("Status: PHASE_TWO_PENDING");
                 showAlert("Phase 2 submitted");
-                refresh();
+                refreshAll();
             } catch (Exception e) {
                 showAlert("Failed: " + e.getMessage());
             }
@@ -264,7 +288,6 @@ public class StudentDashboardDb {
         Tab tab = new Tab("Announcements");
         tab.setClosable(false);
 
-        // Same style as admin - multi-line support
         announcementListView.setCellFactory(listView -> new ListCell<Announcement>() {
             @Override
             protected void updateItem(Announcement item, boolean empty) {
@@ -351,9 +374,37 @@ public class StudentDashboardDb {
                             .map(m -> m.getSentAt() + " | " + m.getFromUser() + ": " + m.getContent())
                             .collect(Collectors.toList())
             ));
+        } catch (Exception e) {
+            showAlert("Refresh failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Full refresh - reloads student data and rebuilds UI
+     */
+    private void refreshAll() {
+        try {
+            // Reload student from database
+            Optional<Student> reloaded = service.findStudentByStudentId(student.getStudentId());
+            if (reloaded.isPresent()) {
+                this.student = reloaded.get();
+            }
             
+            // Update status label
+            if (statusLabel != null) {
+                updateStatusLabel();
+            }
+            
+            // Refresh lists
+            refresh();
+            
+            // Update phase two tab accessibility
             boolean canFillPhaseTwo = service.canFillPhaseTwo(student);
-            phaseTwoTab.setDisable(!canFillPhaseTwo);
+            if (tabs.getTabs().size() > 2) {
+                tabs.getTabs().get(2).setDisable(!canFillPhaseTwo);
+            }
+            
+            showAlert("Data refreshed");
         } catch (Exception e) {
             showAlert("Refresh failed: " + e.getMessage());
         }

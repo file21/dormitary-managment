@@ -25,7 +25,7 @@ A JavaFX desktop application for managing dormitory applications and assignments
 
 ## Application Flow
 
-1. **Registration**: Students create account with name, ID, gender
+1. **Registration**: Students create account with name, ID, gender, college (8+ char password)
 2. **Phase One**: Fill sponsorship, residency, address info
 3. **Admin Review**: Approve, decline, or request resubmit
 4. **Phase Two**: (After Phase One approval) Fill mother's info, emergency contact, transaction ID
@@ -80,11 +80,13 @@ run.bat
 
 ## Default Login Credentials
 
-| Role    | Username | Password |
-|---------|----------|----------|
-| Admin   | admin    | admin123 |
-| Owner   | owner    | owner123 |
-| Student | student1 | pass123  |
+| Role    | Username | Password  |
+|---------|----------|-----------|
+| Admin   | admin    | admin123  |
+| Owner   | owner    | owner123  |
+| Student | student1 | pass1234  |
+
+**Note:** New student passwords must be at least 8 characters.
 
 ## Project Structure
 
@@ -95,6 +97,7 @@ src/main/java/dorm/
 ├── model/                   # Data models
 │   ├── Student.java
 │   ├── Gender.java
+│   ├── College.java         # 9 AAU colleges with full name and acronym
 │   ├── Residency.java       # ADDIS_ABABA, SHEGER_CITY, REGIONAL
 │   ├── SponsorshipType.java # GOVERNMENT, SELF_SPONSORED
 │   └── ...

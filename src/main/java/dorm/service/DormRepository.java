@@ -21,7 +21,7 @@ public class DormRepository {
         users.put("owner", new User("2", "owner", "owner123", Role.OWNER, "System Owner"));
         
         // Demo student
-        Student student = new Student(UUID.randomUUID().toString(), "student1", "pass123", "Student One", "ST-1001", Gender.MALE);
+        Student student = new Student(UUID.randomUUID().toString(), "student1", "pass123", "Student One", "ST-1001", Gender.MALE, null);
         students.put(student.getStudentId(), student);
     }
 

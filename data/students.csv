@@ -1,2 +1,2 @@
-id,username,password,display_name,student_id,gender,residency,city,subcity,woreda,sponsorship_type,disability_info,emergency_contact_name,emergency_contact_phone,transaction_id,assigned_building
-student-001,student1,pass123,Student One,ST-1001,MALE,,,,,,,,,,unassigned
+id,username,password,display_name,student_id,gender,college,residency,city,subcity,woreda,sponsorship_type,disability_info,emergency_contact_name,emergency_contact_phone,transaction_id,assigned_building
+student-001,student1,pass1234,Student One,ST-1001,MALE,NATURAL_COMPUTATIONAL,,,,,,,,,unassigned

@@ -1,5 +1,6 @@
 package dorm.ui;
 
+import dorm.model.College;
 import dorm.model.Gender;
 import dorm.model.Role;
 import dorm.model.Student;
@@ -14,6 +15,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 import java.util.Optional;
 
@@ -89,6 +91,20 @@ public class LoginViewDb {
         TextField fullNameField = new TextField();
         TextField studentIdField = new TextField();
         ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
+        
+        // College dropdown - shows full name
+        ComboBox<College> collegeBox = new ComboBox<>(FXCollections.observableArrayList(College.values()));
+        collegeBox.setConverter(new StringConverter<College>() {
+            @Override
+            public String toString(College college) {
+                return college != null ? college.getFullName() : "";
+            }
+            @Override
+            public College fromString(String string) {
+                return null;
+            }
+        });
+        
         TextField usernameField = new TextField();
         PasswordField passwordField = new PasswordField();
         Button registerButton = new Button("Create Account");
@@ -96,15 +112,22 @@ public class LoginViewDb {
         form.addRow(0, new Label("Full Name"), fullNameField);
         form.addRow(1, new Label("Student ID"), studentIdField);
         form.addRow(2, new Label("Gender"), genderBox);
-        form.addRow(3, new Label("Username"), usernameField);
-        form.addRow(4, new Label("Password"), passwordField);
-        form.add(registerButton, 1, 5);
+        form.addRow(3, new Label("College"), collegeBox);
+        form.addRow(4, new Label("Username"), usernameField);
+        form.addRow(5, new Label("Password (min 8 chars)"), passwordField);
+        form.add(registerButton, 1, 6);
 
         registerButton.setOnAction(event -> {
             if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || 
-                genderBox.getValue() == null || usernameField.getText().isBlank() || 
-                passwordField.getText().isBlank()) {
+                genderBox.getValue() == null || collegeBox.getValue() == null ||
+                usernameField.getText().isBlank() || passwordField.getText().isBlank()) {
                 showAlert("All fields required");
+                return;
+            }
+            
+            // Password validation - minimum 8 characters
+            if (passwordField.getText().length() < 8) {
+                showAlert("Password must be at least 8 characters");
                 return;
             }
             
@@ -114,7 +137,8 @@ public class LoginViewDb {
                         passwordField.getText().trim(),
                         fullNameField.getText().trim(),
                         studentIdField.getText().trim(),
-                        genderBox.getValue()
+                        genderBox.getValue(),
+                        collegeBox.getValue()
                 );
                 switchToDashboard(student);
             } catch (Exception e) {

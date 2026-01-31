@@ -29,7 +29,7 @@ public class DormService {
     }
 
     public Student registerStudent(String username, String password, String fullName, String studentId, Gender gender) {
-        Student student = new Student(java.util.UUID.randomUUID().toString(), username, password, fullName, studentId, gender);
+        Student student = new Student(java.util.UUID.randomUUID().toString(), username, password, fullName, studentId, gender, null);
         repository.saveStudent(student);
         return student;
     }
