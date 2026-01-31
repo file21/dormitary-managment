@@ -1,113 +1,126 @@
--- PostgreSQL schema for Dorm Application Management
+-- MySQL Schema for Dormitory Management System
+-- Simple structure for easy understanding
+-- Database: dormdb
 
-CREATE TYPE user_role AS ENUM ('OWNER','ADMIN','PROCTOR','STUDENT');
-CREATE TYPE student_category AS ENUM ('NORMAL','STAFF_PRIVILEGED');
-CREATE TYPE application_status AS ENUM ('DRAFT','SUBMITTED','NEEDS_EDIT','UNDER_REVIEW','ACCEPTED','REJECTED','CHECKED_IN','WITHDREW');
-CREATE TYPE sponsorship_type AS ENUM ('GOV','SELF');
+CREATE DATABASE IF NOT EXISTS dormdb;
+USE dormdb;
 
-CREATE TABLE IF NOT EXISTS app_user (
-  id              BIGSERIAL PRIMARY KEY,
+-- ============================================================================
+-- Users Table (All system users: STUDENT, ADMIN, PROCTOR, OWNER)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS users (
+  id              VARCHAR(36) PRIMARY KEY,
   username        VARCHAR(50) UNIQUE NOT NULL,
-  password        TEXT NOT NULL,
-  role            user_role NOT NULL,
-  active          BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
+  password        VARCHAR(255) NOT NULL,
+  role            VARCHAR(20) NOT NULL,
+  display_name    VARCHAR(120) NOT NULL,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_username (username),
+  INDEX idx_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS student_profile (
-  user_id         BIGINT PRIMARY KEY REFERENCES app_user(id) ON DELETE CASCADE,
-  full_name       VARCHAR(120) NOT NULL,
-  aau_id          VARCHAR(30) UNIQUE,
-  department      VARCHAR(120),
-  year_of_study   INT CHECK (year_of_study BETWEEN 1 AND 7),
-  category        student_category NOT NULL DEFAULT 'NORMAL'
-);
+-- ============================================================================
+-- Students Table (Extended profile for students)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS students (
+  user_id             VARCHAR(36) PRIMARY KEY,
+  student_id          VARCHAR(30) UNIQUE NOT NULL,
+  city                VARCHAR(100),
+  sponsorship_type    VARCHAR(50),
+  disability_info     TEXT,
+  assigned_building   VARCHAR(100),
+  entry_date          DATE,
+  withdrawal_date     DATE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_student_id (student_id),
+  INDEX idx_assigned_building (assigned_building)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS campus (
-  id              BIGSERIAL PRIMARY KEY,
-  name            VARCHAR(80) UNIQUE NOT NULL
-);
+-- ============================================================================
+-- Applications Table (Dorm applications)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS applications (
+  id              VARCHAR(36) PRIMARY KEY,
+  student_id      VARCHAR(36) NOT NULL,
+  status          VARCHAR(20) NOT NULL DEFAULT 'NOT_SEEN',
+  admin_note      TEXT,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_student (student_id),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS block (
-  id              BIGSERIAL PRIMARY KEY,
-  campus_id       BIGINT NOT NULL REFERENCES campus(id) ON DELETE CASCADE,
-  block_code      VARCHAR(20) NOT NULL,
-  UNIQUE (campus_id, block_code)
-);
+-- ============================================================================
+-- Announcements Table (System announcements)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS announcements (
+  id              VARCHAR(36) PRIMARY KEY,
+  title           VARCHAR(200) NOT NULL,
+  body            TEXT NOT NULL,
+  created_by      VARCHAR(120) NOT NULL,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS bed (
-  id              BIGSERIAL PRIMARY KEY,
-  block_id        BIGINT NOT NULL REFERENCES block(id) ON DELETE CASCADE,
-  bed_label       VARCHAR(20) NOT NULL,
-  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-  UNIQUE (block_id, bed_label)
-);
+-- ============================================================================
+-- Messages Table (User-to-user messaging)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS messages (
+  id              VARCHAR(36) PRIMARY KEY,
+  from_user       VARCHAR(50) NOT NULL,
+  to_user         VARCHAR(50) NOT NULL,
+  content         TEXT NOT NULL,
+  sent_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_from_user (from_user),
+  INDEX idx_to_user (to_user),
+  INDEX idx_sent_at (sent_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS proctor_assignment (
-  proctor_user_id BIGINT PRIMARY KEY REFERENCES app_user(id) ON DELETE CASCADE,
-  block_id        BIGINT NOT NULL REFERENCES block(id),
-  active          BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ============================================================================
+-- Building Assignments Table (Proctor to building mapping)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS building_assignments (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  proctor_id      VARCHAR(36) NOT NULL,
+  building_name   VARCHAR(100) NOT NULL,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (proctor_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_proctor (proctor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS application_window (
-  window_code     VARCHAR(40) PRIMARY KEY,
-  open_at         TIMESTAMP NOT NULL,
-  close_at        TIMESTAMP NOT NULL,
-  active          BOOLEAN NOT NULL DEFAULT TRUE
-);
+-- ============================================================================
+-- Document Paths Table (Store paths to uploaded documents)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS document_paths (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  student_id      VARCHAR(36) NOT NULL,
+  file_path       VARCHAR(500) NOT NULL,
+  file_type       VARCHAR(50),
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_student (student_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS dorm_application (
-  id              BIGSERIAL PRIMARY KEY,
-  student_user_id BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-  window_code     VARCHAR(40) NOT NULL REFERENCES application_window(window_code),
-  status          application_status NOT NULL DEFAULT 'DRAFT',
-  sponsorship     sponsorship_type NOT NULL,
-  disability      BOOLEAN NOT NULL DEFAULT FALSE,
-  department      VARCHAR(120),
-  campus_pref     VARCHAR(80),
-  distance_km     NUMERIC(6,2),
-  notes           TEXT,
-  score           INT NOT NULL DEFAULT 0,
-  submitted_at    TIMESTAMP,
-  updated_at      TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (student_user_id, window_code)
-);
+-- ============================================================================
+-- Sample Data (for testing)
+-- ============================================================================
 
-CREATE TABLE IF NOT EXISTS application_review (
-  id              BIGSERIAL PRIMARY KEY,
-  application_id  BIGINT NOT NULL REFERENCES dorm_application(id) ON DELETE CASCADE,
-  reviewer_user_id BIGINT NOT NULL REFERENCES app_user(id),
-  decision        application_status NOT NULL,
-  comment         TEXT,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Create default users
+INSERT INTO users (id, username, password, role, display_name) VALUES 
+('1', 'admin', 'admin123', 'ADMIN', 'Main Administrator'),
+('2', 'proctor1', 'proctor123', 'PROCTOR', 'John Proctor'),
+('3', 'owner', 'owner123', 'OWNER', 'System Owner'),
+('4', 'student1', 'student123', 'STUDENT', 'Alice Johnson');
 
-CREATE TABLE IF NOT EXISTS allocation (
-  id              BIGSERIAL PRIMARY KEY,
-  application_id  BIGINT UNIQUE NOT NULL REFERENCES dorm_application(id) ON DELETE CASCADE,
-  bed_id          BIGINT UNIQUE NOT NULL REFERENCES bed(id),
-  assigned_by     BIGINT NOT NULL REFERENCES app_user(id),
-  room_number     VARCHAR(30),
-  allocated_at    TIMESTAMP NOT NULL DEFAULT NOW(),
-  checked_in_at   TIMESTAMP,
-  checked_out_at  TIMESTAMP
-);
+-- Create student profile
+INSERT INTO students (user_id, student_id, city) VALUES 
+('4', 'ST-1001', 'Addis Ababa');
 
-CREATE TABLE IF NOT EXISTS notification (
-  id              BIGSERIAL PRIMARY KEY,
-  to_user_id      BIGINT NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
-  title           VARCHAR(120) NOT NULL,
-  message         TEXT NOT NULL,
-  is_read         BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Create building assignment for proctor
+INSERT INTO building_assignments (proctor_id, building_name) VALUES 
+('2', 'Building A');
 
-CREATE TABLE IF NOT EXISTS audit_log (
-  id              BIGSERIAL PRIMARY KEY,
-  actor_user_id   BIGINT REFERENCES app_user(id),
-  action          VARCHAR(80) NOT NULL,
-  entity_type     VARCHAR(80) NOT NULL,
-  entity_id       BIGINT,
-  details         TEXT,
-  created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
+-- Create sample announcement
+INSERT INTO announcements (id, title, body, created_by) VALUES 
+('ann-1', 'Welcome to Dormitory System', 'Applications are now open for the new semester. Please submit your applications before the deadline.', 'Main Administrator');
