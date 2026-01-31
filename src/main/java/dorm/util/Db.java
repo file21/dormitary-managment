@@ -21,9 +21,9 @@ public final class Db {
 
             // MySQL connection URL with proper timezone and SSL settings
             cfg.setJdbcUrl(System.getenv().getOrDefault("DB_URL", 
-                    "jdbc:mysql://localhost:3306/dormdb?serverTimezone=UTC&useSSL=false"));
+                    "jdbc:mysql://127.0.0.1:3310/dormdb?serverTimezone=UTC&useSSL=false"));
             cfg.setUsername(System.getenv().getOrDefault("DB_USER", "root"));
-            cfg.setPassword(System.getenv().getOrDefault("DB_PASS", ""));
+            cfg.setPassword(System.getenv().getOrDefault("DB_PASS", "30MB6-I67J4-3DN0T-L609U"));
 
             cfg.setMaximumPoolSize(10);
             cfg.setMinimumIdle(2);

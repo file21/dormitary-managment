@@ -59,42 +59,51 @@ See [SOLID_PRINCIPLES.md](SOLID_PRINCIPLES.md) for detailed documentation.
 
 ## Setup
 
-### 1. Install MySQL
+### 1. Database Setup
+
+The application uses **MySQL database**. See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed instructions.
+
+**Quick Setup:**
 
 ```bash
-sudo apt-get install mysql-server
+# Initialize the database (creates dormdb and all tables)
+./init-db.sh
 ```
 
-### 2. Create Database
+Or manually:
 
 ```bash
-mysql -u root -p < src/main/resources/sql/simple_schema.sql
+mysql -h 127.0.0.1 -P 3310 -u root -p30MB6-I67J4-3DN0T-L609U < src/main/resources/sql/schema.sql
 ```
 
 This creates:
 - Database: `dormdb`
-- Tables: users, students, applications, announcements, messages, building_assignments
-- Sample data (admin, proctor, owner, student accounts)
+- 7 tables: users, students, applications, announcements, messages, building_assignments, document_paths
+- Sample test users (admin, proctor, owner, student)
 
-### 3. Configure Database Connection (Optional)
+### 2. Database Configuration
 
-By default connects to `jdbc:mysql://localhost:3306/dormdb` with user `root` and no password.
+Default connection (configured in `src/main/java/dorm/util/Db.java`):
+- Host: `127.0.0.1:3310`
+- Database: `dormdb`
+- User: `root`
+- Password: `30MB6-I67J4-3DN0T-L609U`
 
-To customize, set environment variables:
+To override, set environment variables:
 
 ```bash
-export DB_URL="jdbc:mysql://localhost:3306/dormdb?serverTimezone=UTC&useSSL=false"
-export DB_USER="root"
+export DB_URL="jdbc:mysql://your-host:port/dormdb?serverTimezone=UTC&useSSL=false"
+export DB_USER="your_username"
 export DB_PASS="your_password"
 ```
 
-### 4. Run the Application
+### 3. Run the Application
 
 ```bash
 mvn clean javafx:run
 ```
 
-Or export JAVA_HOME first:
+Or with custom JAVA_HOME:
 
 ```bash
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
