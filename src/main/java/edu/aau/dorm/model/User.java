@@ -1,35 +1,60 @@
 package edu.aau.dorm.model;
 
-import java.time.Instant;
+import java.util.Objects;
 
-/**
- * Base user for authentication and role checks.
- */
-public abstract class User extends BaseEntity {
-    public enum Role { OWNER, ADMIN, PROCTOR, STUDENT }
-
+public class User {
+    private final String id;
     private final String username;
-    private final String passwordHash;
+    private String password;
     private final Role role;
-    private final boolean active;
-    private final Instant createdAt;
+    private final String displayName;
 
-    protected User(long id, String username, String passwordHash, Role role, boolean active, Instant createdAt) {
-        super(id);
+    public User(String id, String username, String password, Role role, String displayName) {
+        this.id = id;
         this.username = username;
-        this.passwordHash = passwordHash;
+        this.password = password;
         this.role = role;
-        this.active = active;
-        this.createdAt = createdAt;
+        this.displayName = displayName;
     }
 
-    public String username() { return username; }
-    public String passwordHash() { return passwordHash; }
-    public Role role() { return role; }
-    public boolean active() { return active; }
-    public Instant createdAt() { return createdAt; }
+    public String getId() {
+        return id;
+    }
 
-    public boolean canManageUsers() {
-        return role == Role.OWNER;
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        User user = (User) o;
+        return Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

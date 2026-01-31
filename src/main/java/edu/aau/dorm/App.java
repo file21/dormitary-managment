@@ -1,18 +1,21 @@
 package edu.aau.dorm;
 
-import edu.aau.dorm.ui.SceneRouter;
+import edu.aau.dorm.service.DormRepository;
+import edu.aau.dorm.service.DormService;
+import edu.aau.dorm.ui.LoginView;
 import javafx.application.Application;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/**
- * JavaFX entry point.
- */
 public class App extends Application {
-
     @Override
     public void start(Stage stage) {
-        SceneRouter router = new SceneRouter(stage);
-        router.goTo("login.fxml", "Dorm Management - Login");
+        DormService service = new DormService(new DormRepository());
+        LoginView loginView = new LoginView(service, stage);
+
+        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        stage.setTitle("Dormitory Management System");
+        stage.setScene(scene);
         stage.show();
     }
 

@@ -1,12 +1,9 @@
 package edu.aau.dorm.model;
 
 public enum ApplicationStatus {
-    DRAFT,
-    SUBMITTED,
-    NEEDS_EDIT,
-    UNDER_REVIEW,
-    ACCEPTED,
-    REJECTED,
-    CHECKED_IN,
-    WITHDREW
+    NOT_SEEN,
+    APPROVED,
+    DECLINED,
+    RESUBMIT,
+    ASSIGNED
 }
