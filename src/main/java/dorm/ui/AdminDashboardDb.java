@@ -90,36 +90,54 @@ public class AdminDashboardDb {
         TableColumn<DormApplication, String> idCol = new TableColumn<>("Student ID");
         idCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getStudentId()));
-        idCol.setPrefWidth(80);
+
+        TableColumn<DormApplication, String> genderCol = new TableColumn<>("Gender");
+        genderCol.setCellValueFactory(cell -> {
+            Gender g = cell.getValue().getStudent().getGender();
+            return new javafx.beans.property.SimpleStringProperty(g != null ? g.name() : "-");
+        });
+
+        TableColumn<DormApplication, String> residencyCol = new TableColumn<>("Residency");
+        residencyCol.setCellValueFactory(cell -> {
+            Residency r = cell.getValue().getStudent().getResidency();
+            return new javafx.beans.property.SimpleStringProperty(r != null ? r.name() : "-");
+        });
+
+        TableColumn<DormApplication, String> cityCol = new TableColumn<>("City");
+        cityCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getStudent().getCity())));
+
+        TableColumn<DormApplication, String> subcityCol = new TableColumn<>("Subcity");
+        subcityCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getStudent().getSubcity())));
+
+        TableColumn<DormApplication, String> woredaCol = new TableColumn<>("Woreda");
+        woredaCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getStudent().getWoreda())));
 
         TableColumn<DormApplication, String> sponsorCol = new TableColumn<>("Sponsorship");
         sponsorCol.setCellValueFactory(cell -> {
             SponsorshipType type = cell.getValue().getStudent().getSponsorshipType();
             return new javafx.beans.property.SimpleStringProperty(type != null ? type.name() : "-");
         });
-        sponsorCol.setPrefWidth(100);
 
         TableColumn<DormApplication, String> statusCol = new TableColumn<>("Status");
         statusCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStatus().name()));
-        statusCol.setPrefWidth(120);
 
         TableColumn<DormApplication, String> submittedCol = new TableColumn<>("Submitted");
         submittedCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             safe(cell.getValue().getSubmittedDate())));
-        submittedCol.setPrefWidth(80);
 
         TableColumn<DormApplication, String> responseCol = new TableColumn<>("Last Response");
         responseCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             safe(cell.getValue().getLatestResponse())));
-        responseCol.setPrefWidth(120);
 
         TableColumn<DormApplication, String> buildingCol = new TableColumn<>("Building");
         buildingCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getAssignedBuilding()));
-        buildingCol.setPrefWidth(80);
 
-        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, sponsorCol, statusCol, submittedCol, responseCol, buildingCol);
+        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, genderCol, residencyCol, cityCol, subcityCol, woredaCol, sponsorCol, statusCol, submittedCol, responseCol, buildingCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         applicationTable.setEditable(true);
 
