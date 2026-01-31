@@ -38,7 +38,7 @@ A comprehensive JavaFX desktop application for managing dormitory applications, 
 - **JavaFX 21** - Desktop GUI framework
 - **MySQL** - Database (via JDBC)
 - **HikariCP** - Database connection pooling
-- **Maven** - Build and dependency management
+- **Plain Java (javac/java)** - No build tool required
 
 ## OOP & SOLID Principles
 
@@ -97,17 +97,29 @@ export DB_USER="your_username"
 export DB_PASS="your_password"
 ```
 
-### 3. Run the Application
+### 3. Run the Application (Plain javac/java)
+
+1) Download JavaFX SDK (21) and set `JAVA_FX_HOME`  
+2) Place required jars in a local `lib/` folder:
+   - mysql-connector-j
+   - HikariCP
+   - slf4j-api
+   - slf4j-simple
 
 ```bash
-mvn clean javafx:run
-```
+# Compile
+export JAVA_FX_HOME=/path/to/javafx-sdk-21
+javac --module-path "$JAVA_FX_HOME/lib" \
+  --add-modules javafx.controls,javafx.fxml \
+  -cp "lib/*" \
+  -d out \
+  $(find src/main/java -name "*.java")
 
-Or with custom JAVA_HOME:
-
-```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-mvn clean javafx:run
+# Run
+java --module-path "$JAVA_FX_HOME/lib" \
+  --add-modules javafx.controls,javafx.fxml \
+  -cp "out:lib/*" \
+  dorm.App
 ```
 
 ## Default Login Credentials
@@ -151,17 +163,15 @@ src/main/java/dorm/
 2. **CSV Export** - Export student lists to CSV files
 3. **File Upload** - FileChooser for selecting documents and payment slips
 
-## Build & Test
+## Build & Test (Plain javac/java)
 
 ```bash
-# Clean and compile
-mvn clean compile
-
-# Run application
-mvn javafx:run
-
-# Package (optional)
-mvn package
+# Compile only
+javac --module-path "$JAVA_FX_HOME/lib" \
+  --add-modules javafx.controls,javafx.fxml \
+  -cp "lib/*" \
+  -d out \
+  $(find src/main/java -name "*.java")
 ```
 
 ## License
