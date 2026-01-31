@@ -92,26 +92,26 @@ INSERT IGNORE INTO bed (id, block_id, bed_label, is_occupied, is_active) VALUES
 -- Insert Users
 -- ============================================================================
 
--- Admin user (password: admin123 - would be bcrypt hashed in production)
-INSERT IGNORE INTO app_user (id, username, password_hash, role, active) VALUES 
-(1, 'admin1', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9a', 'ADMIN', TRUE),
-(2, 'admin2', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9b', 'ADMIN', TRUE);
+-- Admin user (password: admin123)
+INSERT IGNORE INTO app_user (id, username, password, role, active) VALUES 
+(1, 'admin1', 'admin123', 'ADMIN', TRUE),
+(2, 'admin2', 'admin123', 'ADMIN', TRUE);
 
 -- Proctor users (assigned to blocks)
-INSERT IGNORE INTO app_user (id, username, password_hash, role, active) VALUES 
-(3, 'proctor_main_male', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9c', 'PROCTOR', TRUE),
-(4, 'proctor_main_female', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9d', 'PROCTOR', TRUE),
-(5, 'proctor_north', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9e', 'PROCTOR', TRUE),
-(6, 'proctor_south', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8k9f', 'PROCTOR', TRUE);
+INSERT IGNORE INTO app_user (id, username, password, role, active) VALUES 
+(3, 'proctor_main_male', 'proctor123', 'PROCTOR', TRUE),
+(4, 'proctor_main_female', 'proctor123', 'PROCTOR', TRUE),
+(5, 'proctor_north', 'proctor123', 'PROCTOR', TRUE),
+(6, 'proctor_south', 'proctor123', 'PROCTOR', TRUE);
 
 -- Student users (various statuses)
-INSERT IGNORE INTO app_user (id, username, password_hash, role, active) VALUES 
-(10, 'student001', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka0', 'STUDENT', TRUE),
-(11, 'student002', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka1', 'STUDENT', TRUE),
-(12, 'student003', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka2', 'STUDENT', TRUE),
-(13, 'student004', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka3', 'STUDENT', TRUE),
-(14, 'student005', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka4', 'STUDENT', TRUE),
-(15, 'student006', '$2a$10$SlVH7pe0wK3agoivsHlfCOYiFZtxJXk4c8g6f7g7h8ijkjkl9j8ka5', 'STUDENT', TRUE);
+INSERT IGNORE INTO app_user (id, username, password, role, active) VALUES 
+(10, 'student001', 'student123', 'STUDENT', TRUE),
+(11, 'student002', 'student123', 'STUDENT', TRUE),
+(12, 'student003', 'student123', 'STUDENT', TRUE),
+(13, 'student004', 'student123', 'STUDENT', TRUE),
+(14, 'student005', 'student123', 'STUDENT', TRUE),
+(15, 'student006', 'student123', 'STUDENT', TRUE);
 
 -- ============================================================================
 -- Insert Student Profiles

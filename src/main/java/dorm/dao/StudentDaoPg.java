@@ -15,7 +15,7 @@ public final class StudentDaoPg implements StudentDao {
 
     @Override
     public Student getStudentByUserId(long userId) {
-        String sql = "SELECT u.id, u.username, u.password_hash, u.active, u.created_at, " +
+        String sql = "SELECT u.id, u.username, u.password, u.active, u.created_at, " +
                 "p.full_name, p.aau_id, p.department, p.year_of_study, p.category " +
                 "FROM app_user u JOIN student_profile p ON u.id = p.user_id WHERE u.id = ?";
         try (Connection c = ds.getConnection();
@@ -26,7 +26,7 @@ public final class StudentDaoPg implements StudentDao {
 
                 long id = rs.getLong("id");
                 String username = rs.getString("username");
-                String hash = rs.getString("password_hash");
+                String password = rs.getString("password");
                 boolean active = rs.getBoolean("active");
                 Instant createdAt = rs.getTimestamp("created_at").toInstant();
 
@@ -36,7 +36,7 @@ public final class StudentDaoPg implements StudentDao {
                 int year = rs.getInt("year_of_study");
                 Student.Category category = Student.Category.valueOf(rs.getString("category"));
 
-                return new Student(id, username, hash, active, createdAt, fullName, aauId, dept, year, category);
+                return new Student(id, username, password, active, createdAt, fullName, aauId, dept, year, category);
             }
         } catch (SQLException e) {
             throw new RuntimeException("DB error getStudentByUserId", e);

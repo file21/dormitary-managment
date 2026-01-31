@@ -21,7 +21,7 @@ USE dormdb;
  * app_user: Central user table for all system users
  * - id: Auto-incremented primary key
  * - username: Unique login identifier
- * - password_hash: Bcrypt hashed password
+ * - password: User password
  * - role: User role (OWNER, ADMIN, PROCTOR, STUDENT)
  * - active: Account active status
  * - created_at: Account creation timestamp
@@ -29,7 +29,7 @@ USE dormdb;
 CREATE TABLE app_user (
   id              BIGINT AUTO_INCREMENT PRIMARY KEY,
   username        VARCHAR(50) UNIQUE NOT NULL,
-  password_hash   TEXT NOT NULL,
+  password        TEXT NOT NULL,
   role            VARCHAR(20) NOT NULL CHECK (role IN ('OWNER','ADMIN','PROCTOR','STUDENT')),
   active          BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -331,18 +331,17 @@ INSERT INTO application_window (window_code, open_at, close_at, active) VALUES
 ('2024-MAIN', '2024-01-01 00:00:00', '2024-01-31 23:59:59', TRUE),
 ('2024-RESIT', '2024-06-01 00:00:00', '2024-06-30 23:59:59', FALSE);
 
--- Create default admin user (password: admin123, hashed with bcrypt)
--- Note: Replace with actual bcrypt hash in production
-INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('admin', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4a', 'ADMIN', TRUE);
+-- Create default admin user (password: admin123)
+INSERT INTO app_user (username, password, role, active) VALUES 
+('admin', 'admin123', 'ADMIN', TRUE);
 
 -- Create sample proctor (password: proctor123)
-INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('proctor1', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4b', 'PROCTOR', TRUE);
+INSERT INTO app_user (username, password, role, active) VALUES 
+('proctor1', 'proctor123', 'PROCTOR', TRUE);
 
 -- Create sample student (password: student123)
-INSERT INTO app_user (username, password_hash, role, active) VALUES 
-('student1', '$2a$10$4k4JKk4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4k4c', 'STUDENT', TRUE);
+INSERT INTO app_user (username, password, role, active) VALUES 
+('student1', 'student123', 'STUDENT', TRUE);
 
 -- Add student profile
 INSERT INTO student_profile (user_id, full_name, aau_id, department, year_of_study, category, gender) VALUES 
