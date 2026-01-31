@@ -20,7 +20,7 @@ public class App extends Application {
         
         LoginViewDb loginView = new LoginViewDb(service, stage);
 
-        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        Scene scene = new Scene(loginView.getRoot(), 1200, 700);
         stage.setTitle("Dormitory Management System");
         stage.setScene(scene);
         stage.show();

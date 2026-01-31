@@ -54,10 +54,13 @@ public class OwnerDashboardDb {
         Label headerLabel = new Label("Owner: " + owner.getDisplayName());
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
+        Button refreshButton = new Button("Refresh");
+        refreshButton.setOnAction(event -> refresh());
+        
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(event -> logout());
         
-        HBox header = new HBox(20, headerLabel, logoutButton);
+        HBox header = new HBox(20, headerLabel, refreshButton, logoutButton);
         header.setPadding(new Insets(10));
         root.setTop(header);
 
@@ -106,10 +109,6 @@ public class OwnerDashboardDb {
             return new javafx.beans.property.SimpleStringProperty(r != null ? r.name() : "-");
         });
 
-        TableColumn<DormApplication, String> cityCol = new TableColumn<>("City");
-        cityCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
-            safe(cell.getValue().getStudent().getCity())));
-
         TableColumn<DormApplication, String> subcityCol = new TableColumn<>("Subcity");
         subcityCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             safe(cell.getValue().getStudent().getSubcity())));
@@ -117,6 +116,10 @@ public class OwnerDashboardDb {
         TableColumn<DormApplication, String> woredaCol = new TableColumn<>("Woreda");
         woredaCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             safe(cell.getValue().getStudent().getWoreda())));
+
+        TableColumn<DormApplication, String> transactionCol = new TableColumn<>("Transaction ID");
+        transactionCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            safe(cell.getValue().getStudent().getTransactionId())));
 
         TableColumn<DormApplication, String> sponsorCol = new TableColumn<>("Sponsorship");
         sponsorCol.setCellValueFactory(cell -> {
@@ -140,7 +143,7 @@ public class OwnerDashboardDb {
         buildingCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getStudent().getAssignedBuilding()));
 
-        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, genderCol, residencyCol, cityCol, subcityCol, woredaCol, sponsorCol, statusCol, submittedCol, responseCol, buildingCol);
+        applicationTable.getColumns().addAll(selectCol, nameCol, idCol, genderCol, residencyCol, subcityCol, woredaCol, sponsorCol, statusCol, transactionCol, submittedCol, responseCol, buildingCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         applicationTable.setEditable(true);
 
@@ -646,7 +649,7 @@ public class OwnerDashboardDb {
 
     private void logout() {
         LoginViewDb loginView = new LoginViewDb(service, stage);
-        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        Scene scene = new Scene(loginView.getRoot(), 1200, 700);
         stage.setScene(scene);
     }
 

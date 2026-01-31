@@ -21,7 +21,7 @@ public class StudentDashboardDb {
     private final Student student;
     private final Stage stage;
     private final BorderPane root;
-    private final ListView<String> announcementList;
+    private final ListView<Announcement> announcementListView;
     private final ListView<String> messageList;
     private Tab phaseTwoTab;
 
@@ -30,7 +30,7 @@ public class StudentDashboardDb {
         this.student = student;
         this.stage = stage;
         this.root = new BorderPane();
-        this.announcementList = new ListView<>();
+        this.announcementListView = new ListView<>();
         this.messageList = new ListView<>();
         build();
         refresh();
@@ -44,10 +44,13 @@ public class StudentDashboardDb {
         Label headerLabel = new Label("Welcome, " + student.getDisplayName() + " (ID: " + student.getStudentId() + ")");
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
+        Button refreshButton = new Button("Refresh");
+        refreshButton.setOnAction(event -> refresh());
+        
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(event -> logout());
         
-        HBox header = new HBox(20, headerLabel, logoutButton);
+        HBox header = new HBox(20, headerLabel, refreshButton, logoutButton);
         header.setPadding(new Insets(10));
         root.setTop(header);
 
@@ -194,7 +197,6 @@ public class StudentDashboardDb {
         form.addRow(0, new Label("Emergency Contact Name"), emergencyNameField);
         form.addRow(1, new Label("Emergency Contact Phone"), emergencyPhoneField);
         
-        // Transaction ID - only required for self-sponsored
         Label transactionLabel = new Label("Transaction ID (self-sponsored)");
         form.addRow(2, transactionLabel, transactionIdField);
         
@@ -233,7 +235,6 @@ public class StudentDashboardDb {
                 return;
             }
             
-            // Transaction ID required only for self-sponsored
             if (student.getSponsorshipType() == SponsorshipType.SELF_SPONSORED && 
                 transactionIdField.getText().isBlank()) {
                 showAlert("Transaction ID is required for self-sponsored students");
@@ -263,7 +264,34 @@ public class StudentDashboardDb {
         Tab tab = new Tab("Announcements");
         tab.setClosable(false);
 
-        VBox wrapper = new VBox(10, announcementList);
+        // Same style as admin - multi-line support
+        announcementListView.setCellFactory(listView -> new ListCell<Announcement>() {
+            @Override
+            protected void updateItem(Announcement item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    VBox box = new VBox(5);
+                    Label titleLabel = new Label(item.getTitle());
+                    titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                    
+                    Label bodyLabel = new Label(item.getBody());
+                    bodyLabel.setWrapText(true);
+                    bodyLabel.setMaxWidth(600);
+                    
+                    Label dateLabel = new Label(item.getCreatedAt().toString() + " by " + item.getCreatedBy());
+                    dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
+                    
+                    box.getChildren().addAll(titleLabel, bodyLabel, dateLabel);
+                    box.setPadding(new Insets(5));
+                    setGraphic(box);
+                }
+            }
+        });
+
+        VBox wrapper = new VBox(10, announcementListView);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
         return tab;
@@ -273,8 +301,8 @@ public class StudentDashboardDb {
         Tab tab = new Tab("Messages");
         tab.setClosable(false);
 
-        // Students choose which admin to message
         ComboBox<String> adminBox = new ComboBox<>();
+        adminBox.setPromptText("Select Admin");
         adminBox.setItems(FXCollections.observableArrayList(
             service.getUsersByRole(Role.ADMIN).stream()
                 .map(User::getUsername)
@@ -288,6 +316,7 @@ public class StudentDashboardDb {
 
         TextArea messageArea = new TextArea();
         messageArea.setPrefRowCount(3);
+        messageArea.setPromptText("Type your message here");
         Button sendButton = new Button("Send");
 
         sendButton.setOnAction(event -> {
@@ -299,6 +328,7 @@ public class StudentDashboardDb {
                 service.sendMessage(student.getUsername(), adminBox.getValue(), messageArea.getText().trim());
                 messageArea.clear();
                 refresh();
+                showAlert("Message sent");
             } catch (Exception e) {
                 showAlert("Failed: " + e.getMessage());
             }
@@ -307,7 +337,7 @@ public class StudentDashboardDb {
         VBox form = new VBox(10, adminBox, messageArea, sendButton);
         form.setPadding(new Insets(10));
 
-        VBox wrapper = new VBox(10, form, messageList);
+        VBox wrapper = new VBox(10, form, new Label("Received Messages:"), messageList);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
         return tab;
@@ -315,11 +345,7 @@ public class StudentDashboardDb {
 
     private void refresh() {
         try {
-            announcementList.setItems(FXCollections.observableArrayList(
-                    service.getAnnouncements().stream()
-                            .map(a -> a.getTitle() + ": " + a.getBody())
-                            .collect(Collectors.toList())
-            ));
+            announcementListView.setItems(FXCollections.observableArrayList(service.getAnnouncements()));
             messageList.setItems(FXCollections.observableArrayList(
                     service.getMessagesForUser(student.getUsername()).stream()
                             .map(m -> m.getSentAt() + " | " + m.getFromUser() + ": " + m.getContent())
@@ -335,7 +361,7 @@ public class StudentDashboardDb {
 
     private void logout() {
         LoginViewDb loginView = new LoginViewDb(service, stage);
-        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        Scene scene = new Scene(loginView.getRoot(), 1200, 700);
         stage.setScene(scene);
     }
 

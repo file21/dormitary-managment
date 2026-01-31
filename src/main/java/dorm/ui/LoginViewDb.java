@@ -133,13 +133,13 @@ public class LoginViewDb {
         
         if (authenticated instanceof Student) {
             Student student = (Student) authenticated;
-            scene = new Scene(new StudentDashboardDb(service, student, stage).getRoot(), 900, 600);
+            scene = new Scene(new StudentDashboardDb(service, student, stage).getRoot(), 1200, 700);
         } else if (authenticated instanceof User) {
             User user = (User) authenticated;
             if (user.getRole() == Role.ADMIN) {
-                scene = new Scene(new AdminDashboardDb(service, user, stage).getRoot(), 1400, 700);
+                scene = new Scene(new AdminDashboardDb(service, user, stage).getRoot(), 1200, 700);
             } else if (user.getRole() == Role.OWNER) {
-                scene = new Scene(new OwnerDashboardDb(service, user, stage).getRoot(), 1400, 700);
+                scene = new Scene(new OwnerDashboardDb(service, user, stage).getRoot(), 1200, 700);
             } else {
                 showAlert("Unknown role");
                 return;
