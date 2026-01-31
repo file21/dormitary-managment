@@ -109,7 +109,9 @@ public class AdminDashboard {
                 showAlert("Missing Data", "Select an application and enter a building.");
                 return;
             }
-            if (selected.getStatus() != ApplicationStatus.APPROVED && selected.getStatus() != ApplicationStatus.ASSIGNED) {
+            if (selected.getStatus() != ApplicationStatus.PHASE_ONE_APPROVED && 
+                selected.getStatus() != ApplicationStatus.PHASE_TWO_APPROVED &&
+                selected.getStatus() != ApplicationStatus.ASSIGNED) {
                 showAlert("Not Approved", "Only approved applications can be assigned.");
                 return;
             }

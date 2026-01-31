@@ -2,6 +2,7 @@ package dorm.ui;
 
 import dorm.model.ApplicationStatus;
 import dorm.model.DormApplication;
+import dorm.model.SponsorshipType;
 import dorm.model.Student;
 import dorm.service.DormService;
 import javafx.collections.FXCollections;
@@ -78,7 +79,8 @@ public class StudentDashboard {
         form.setHgap(10);
         form.setVgap(10);
 
-        TextField sponsorshipField = new TextField();
+        ComboBox<SponsorshipType> sponsorshipBox = new ComboBox<>(FXCollections.observableArrayList(SponsorshipType.values()));
+        sponsorshipBox.setPromptText("Select Sponsorship Type");
         TextField disabilityField = new TextField();
         TextField documentField = new TextField();
         documentField.setEditable(false);
@@ -90,7 +92,7 @@ public class StudentDashboard {
         Button submitButton = new Button("Submit Application");
         Button deleteButton = new Button("Delete Unreviewed Application");
 
-        form.addRow(0, new Label("Sponsorship Type"), sponsorshipField);
+        form.addRow(0, new Label("Sponsorship Type"), sponsorshipBox);
         form.addRow(1, new Label("Disability Info"), disabilityField);
         form.addRow(2, new Label("Document"), new HBox(10, documentField, chooseDocButton));
         form.addRow(3, new Label("Payment Slip (self-sponsored)"), new HBox(10, paymentSlipField, chooseSlipButton));
@@ -116,12 +118,12 @@ public class StudentDashboard {
         });
 
         submitButton.setOnAction(event -> {
-            if (sponsorshipField.getText().isBlank()) {
+            if (sponsorshipBox.getValue() == null) {
                 showAlert("Missing Data", "Sponsorship type is required.");
                 return;
             }
             DormApplication application = service.getApplicationForStudent(student).orElseGet(() ->
-                    service.submitApplication(student, sponsorshipField.getText().trim(), disabilityField.getText().trim()));
+                    service.submitApplication(student, sponsorshipBox.getValue(), disabilityField.getText().trim()));
 
             if (!documentField.getText().isBlank()) {
                 student.addDocumentPath(documentField.getText());
@@ -129,8 +131,8 @@ public class StudentDashboard {
             if (!paymentSlipField.getText().isBlank()) {
                 student.setPaymentSlipPath(paymentSlipField.getText());
             }
-            if (application.getStatus() == ApplicationStatus.RESUBMIT) {
-                service.updateApplication(application, ApplicationStatus.NOT_SEEN, null);
+            if (application.getStatus() == ApplicationStatus.PHASE_ONE_RESUBMIT) {
+                service.updateApplication(application, ApplicationStatus.PHASE_ONE_PENDING, null);
             }
             refresh();
             showAlert("Application Submitted", "Your application has been submitted.");

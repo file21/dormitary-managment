@@ -1,2 +1,2 @@
-id,username,password,display_name,student_id,city,sponsorship_type,disability_info,assigned_building,entry_date,withdrawal_date
-student-001,student1,pass123,Student One,ST-1001,Addis Ababa,,,,,,
+id,username,password,display_name,student_id,city,gender,sponsorship_type,disability_info,document_paths,payment_slip_path,assigned_building,entry_date,withdrawal_date
+student-001,student1,pass123,Student One,ST-1001,Addis Ababa,MALE,,,,,,,

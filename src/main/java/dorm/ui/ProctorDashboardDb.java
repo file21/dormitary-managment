@@ -6,10 +6,12 @@ import dorm.service.DatabaseDormService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
 import java.util.stream.Collectors;
 
@@ -20,13 +22,15 @@ import java.util.stream.Collectors;
 public class ProctorDashboardDb {
     private final DatabaseDormService service;
     private final User proctor;
+    private final Stage stage;
     private final BorderPane root;
     private final TableView<Student> studentsTable;
     private final ListView<String> messageList;
 
-    public ProctorDashboardDb(DatabaseDormService service, User proctor) {
+    public ProctorDashboardDb(DatabaseDormService service, User proctor, Stage stage) {
         this.service = service;
         this.proctor = proctor;
+        this.stage = stage;
         this.root = new BorderPane();
         this.studentsTable = new TableView<>();
         this.messageList = new ListView<>();
@@ -45,9 +49,15 @@ public class ProctorDashboardDb {
                 .findFirst()
                 .orElse("Unassigned");
 
-        Label header = new Label("Proctor Dashboard - " + proctor.getDisplayName() + " (" + buildingName + ")");
+        // Header with logout button
+        Label headerLabel = new Label("Proctor Dashboard - " + proctor.getDisplayName() + " (" + buildingName + ")");
+        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        
+        Button logoutButton = new Button("Logout");
+        logoutButton.setOnAction(event -> logout());
+        
+        HBox header = new HBox(20, headerLabel, logoutButton);
         header.setPadding(new Insets(10));
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
         root.setTop(header);
 
         TabPane tabs = new TabPane();
@@ -66,6 +76,10 @@ public class ProctorDashboardDb {
         TableColumn<Student, String> idCol = new TableColumn<>("Student ID");
         idCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getStudentId()));
 
+        TableColumn<Student, String> genderCol = new TableColumn<>("Gender");
+        genderCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            cell.getValue().getGender() != null ? cell.getValue().getGender().name() : "-"));
+
         TableColumn<Student, String> entryCol = new TableColumn<>("Entry Date");
         entryCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getEntryDate() == null ? "-" : cell.getValue().getEntryDate()));
@@ -74,7 +88,7 @@ public class ProctorDashboardDb {
         withdrawalCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
             cell.getValue().getWithdrawalDate() == null ? "-" : cell.getValue().getWithdrawalDate()));
 
-        studentsTable.getColumns().addAll(nameCol, idCol, entryCol, withdrawalCol);
+        studentsTable.getColumns().addAll(nameCol, idCol, genderCol, entryCol, withdrawalCol);
         studentsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         Button registerEntryButton = new Button("Register Entry");
@@ -89,6 +103,7 @@ public class ProctorDashboardDb {
             try {
                 service.registerEntry(selected);
                 refresh();
+                showAlert("Entry Registered", "Entry date recorded for " + selected.getDisplayName());
             } catch (Exception e) {
                 showAlert("Error", "Failed to register entry: " + e.getMessage());
             }
@@ -103,6 +118,7 @@ public class ProctorDashboardDb {
             try {
                 service.registerWithdrawal(selected);
                 refresh();
+                showAlert("Withdrawal Registered", "Withdrawal date recorded for " + selected.getDisplayName());
             } catch (Exception e) {
                 showAlert("Error", "Failed to register withdrawal: " + e.getMessage());
             }
@@ -125,6 +141,8 @@ public class ProctorDashboardDb {
         recipientBox.setItems(FXCollections.observableArrayList(
                 service.getStudents().stream().map(Student::getUsername).collect(Collectors.toList())
         ));
+        recipientBox.setPromptText("Select Student");
+        
         TextArea messageArea = new TextArea();
         messageArea.setPrefRowCount(3);
         Button sendButton = new Button("Send Message");
@@ -170,6 +188,12 @@ public class ProctorDashboardDb {
         } catch (Exception e) {
             showAlert("Error", "Failed to refresh: " + e.getMessage());
         }
+    }
+
+    private void logout() {
+        LoginViewDb loginView = new LoginViewDb(service, stage);
+        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        stage.setScene(scene);
     }
 
     private void showAlert(String title, String message) {

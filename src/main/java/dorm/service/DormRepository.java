@@ -4,6 +4,7 @@ import dorm.model.Announcement;
 import dorm.model.ApplicationStatus;
 import dorm.model.BuildingAssignment;
 import dorm.model.DormApplication;
+import dorm.model.Gender;
 import dorm.model.Message;
 import dorm.model.Role;
 import dorm.model.Student;
@@ -17,6 +18,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * In-memory repository for testing (not used in production - DatabaseDormService is used instead)
+ */
 public class DormRepository {
     private final List<User> users = new ArrayList<>();
     private final List<Student> students = new ArrayList<>();
@@ -33,7 +37,7 @@ public class DormRepository {
         User admin = new User(UUID.randomUUID().toString(), "admin", "admin123", Role.ADMIN, "Main Admin");
         User proctor = new User(UUID.randomUUID().toString(), "proctor1", "pass123", Role.PROCTOR, "Proctor One");
         User owner = new User(UUID.randomUUID().toString(), "owner", "owner123", Role.OWNER, "System Owner");
-        Student student = new Student(UUID.randomUUID().toString(), "student1", "pass123", "Student One", "ST-1001", "Addis Ababa");
+        Student student = new Student(UUID.randomUUID().toString(), "student1", "pass123", "Student One", "ST-1001", "Addis Ababa", Gender.MALE);
 
         users.add(admin);
         users.add(proctor);

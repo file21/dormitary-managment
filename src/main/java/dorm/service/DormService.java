@@ -2,7 +2,9 @@ package dorm.service;
 
 import dorm.model.ApplicationStatus;
 import dorm.model.DormApplication;
+import dorm.model.Gender;
 import dorm.model.Role;
+import dorm.model.SponsorshipType;
 import dorm.model.Student;
 import dorm.model.User;
 
@@ -10,6 +12,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * In-memory service for testing (not used in production - DatabaseDormService is used instead)
+ */
 public class DormService {
     private final DormRepository repository;
 
@@ -22,13 +27,13 @@ public class DormService {
                 .filter(user -> user.getPassword().equals(password));
     }
 
-    public Student registerStudent(String username, String password, String fullName, String studentId, String city) {
-        Student student = new Student(java.util.UUID.randomUUID().toString(), username, password, fullName, studentId, city);
+    public Student registerStudent(String username, String password, String fullName, String studentId, String city, Gender gender) {
+        Student student = new Student(java.util.UUID.randomUUID().toString(), username, password, fullName, studentId, city, gender);
         repository.addStudent(student);
         return student;
     }
 
-    public DormApplication submitApplication(Student student, String sponsorshipType, String disabilityInfo) {
+    public DormApplication submitApplication(Student student, SponsorshipType sponsorshipType, String disabilityInfo) {
         student.setSponsorshipType(sponsorshipType);
         student.setDisabilityInfo(disabilityInfo);
         return repository.createApplication(student);
@@ -36,7 +41,7 @@ public class DormService {
 
     public void deleteApplication(Student student) {
         repository.findApplicationByStudent(student).ifPresent(app -> {
-            if (app.getStatus() == ApplicationStatus.NOT_SEEN) {
+            if (app.getStatus() == ApplicationStatus.PHASE_ONE_PENDING) {
                 repository.deleteApplication(app);
             }
         });

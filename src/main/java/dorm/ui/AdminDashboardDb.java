@@ -2,44 +2,52 @@ package dorm.ui;
 
 import dorm.model.ApplicationStatus;
 import dorm.model.DormApplication;
+import dorm.model.SponsorshipType;
 import dorm.model.Student;
 import dorm.model.User;
 import dorm.service.DatabaseDormService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
- * Admin dashboard UI.
- * Demonstrates I/O operations (file export) and separation of concerns.
+ * Admin dashboard UI with application review and document viewing.
  */
 public class AdminDashboardDb {
     private final DatabaseDormService service;
     private final User admin;
+    private final Stage stage;
     private final BorderPane root;
     private final TableView<DormApplication> applicationTable;
     private final ListView<String> announcementList;
     private final ListView<String> messageList;
+    private final TextArea detailsArea;
 
-    public AdminDashboardDb(DatabaseDormService service, User admin) {
+    public AdminDashboardDb(DatabaseDormService service, User admin, Stage stage) {
         this.service = service;
         this.admin = admin;
+        this.stage = stage;
         this.root = new BorderPane();
         this.applicationTable = new TableView<>();
         this.announcementList = new ListView<>();
         this.messageList = new ListView<>();
+        this.detailsArea = new TextArea();
+        this.detailsArea.setEditable(false);
+        this.detailsArea.setPrefRowCount(8);
         build();
         refresh();
     }
@@ -49,9 +57,15 @@ public class AdminDashboardDb {
     }
 
     private void build() {
-        Label header = new Label("Admin Dashboard - " + admin.getDisplayName());
+        // Header with logout button
+        Label headerLabel = new Label("Admin Dashboard - " + admin.getDisplayName());
+        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        
+        Button logoutButton = new Button("Logout");
+        logoutButton.setOnAction(event -> logout());
+        
+        HBox header = new HBox(20, headerLabel, logoutButton);
         header.setPadding(new Insets(10));
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
         root.setTop(header);
 
         TabPane tabs = new TabPane();
@@ -67,66 +81,223 @@ public class AdminDashboardDb {
         Tab tab = new Tab("Applications");
         tab.setClosable(false);
 
+        // Table columns
         TableColumn<DormApplication, String> studentCol = new TableColumn<>("Student");
-        studentCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getStudent().getDisplayName()));
+        studentCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            cell.getValue().getStudent().getDisplayName()));
+        studentCol.setPrefWidth(150);
 
         TableColumn<DormApplication, String> idCol = new TableColumn<>("Student ID");
-        idCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getStudent().getStudentId()));
+        idCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            cell.getValue().getStudent().getStudentId()));
+        idCol.setPrefWidth(100);
+
+        TableColumn<DormApplication, String> sponsorCol = new TableColumn<>("Sponsorship");
+        sponsorCol.setCellValueFactory(cell -> {
+            SponsorshipType type = cell.getValue().getStudent().getSponsorshipType();
+            return new javafx.beans.property.SimpleStringProperty(type != null ? type.name() : "-");
+        });
+        sponsorCol.setPrefWidth(120);
 
         TableColumn<DormApplication, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(cell.getValue().getStatus().name()));
+        statusCol.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+            cell.getValue().getStatus().name()));
+        statusCol.setPrefWidth(150);
 
-        applicationTable.getColumns().addAll(studentCol, idCol, statusCol);
+        applicationTable.getColumns().addAll(studentCol, idCol, sponsorCol, statusCol);
         applicationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        ComboBox<ApplicationStatus> statusBox = new ComboBox<>(FXCollections.observableArrayList(ApplicationStatus.values()));
-        TextField noteField = new TextField();
-        noteField.setPromptText("Note for student");
-        TextField buildingField = new TextField();
-        buildingField.setPromptText("Assign building (for approved students)");
-
-        Button updateButton = new Button("Update Status");
-        Button assignButton = new Button("Assign Building");
-
-        updateButton.setOnAction(event -> {
-            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
-            if (selected == null || statusBox.getValue() == null) {
-                showAlert("Select Application", "Choose an application and status.");
-                return;
-            }
-            try {
-                service.updateApplication(selected, statusBox.getValue(), noteField.getText().trim());
-                refresh();
-            } catch (Exception e) {
-                showAlert("Error", "Failed to update: " + e.getMessage());
+        
+        // Show details when selected
+        applicationTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                showApplicationDetails(newVal);
             }
         });
 
-        assignButton.setOnAction(event -> {
+        // Action buttons
+        TextField noteField = new TextField();
+        noteField.setPromptText("Note for student");
+        noteField.setPrefWidth(200);
+
+        Button approveBtn = new Button("Approve");
+        Button declineBtn = new Button("Decline");
+        Button resubmitBtn = new Button("Request Resubmit");
+        Button viewDocBtn = new Button("View Document");
+        Button viewPaymentBtn = new Button("View Payment Slip");
+
+        TextField buildingField = new TextField();
+        buildingField.setPromptText("Building name");
+        buildingField.setPrefWidth(120);
+        Button assignBtn = new Button("Assign Building");
+
+        approveBtn.setOnAction(event -> {
             DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
-            if (selected == null || buildingField.getText().isBlank()) {
-                showAlert("Missing Data", "Select an application and enter a building.");
+            if (selected == null) {
+                showAlert("Select Application", "Please select an application first.");
                 return;
             }
-            if (selected.getStatus() != ApplicationStatus.APPROVED && selected.getStatus() != ApplicationStatus.ASSIGNED) {
-                showAlert("Not Approved", "Only approved applications can be assigned.");
+            try {
+                ApplicationStatus status = selected.getStatus();
+                if (status == ApplicationStatus.PHASE_ONE_PENDING) {
+                    service.approvePhaseOne(selected, noteField.getText().trim());
+                } else if (status == ApplicationStatus.PHASE_TWO_PENDING) {
+                    service.approvePhaseTwoApplication(selected, noteField.getText().trim());
+                } else {
+                    showAlert("Cannot Approve", "This application is not in a pending state.");
+                    return;
+                }
+                refresh();
+                showAlert("Approved", "Application approved successfully.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to approve: " + e.getMessage());
+            }
+        });
+
+        declineBtn.setOnAction(event -> {
+            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Application", "Please select an application first.");
+                return;
+            }
+            try {
+                ApplicationStatus status = selected.getStatus();
+                if (status == ApplicationStatus.PHASE_ONE_PENDING) {
+                    service.declinePhaseOne(selected, noteField.getText().trim());
+                } else if (status == ApplicationStatus.PHASE_TWO_PENDING) {
+                    service.declinePhaseTwoApplication(selected, noteField.getText().trim());
+                } else {
+                    showAlert("Cannot Decline", "This application is not in a pending state.");
+                    return;
+                }
+                refresh();
+                showAlert("Declined", "Application declined.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed to decline: " + e.getMessage());
+            }
+        });
+
+        resubmitBtn.setOnAction(event -> {
+            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Application", "Please select an application first.");
+                return;
+            }
+            if (noteField.getText().isBlank()) {
+                showAlert("Note Required", "Please provide a note explaining what needs to be corrected.");
+                return;
+            }
+            try {
+                service.requestResubmit(selected, noteField.getText().trim());
+                refresh();
+                showAlert("Resubmit Requested", "Student has been asked to resubmit.");
+            } catch (Exception e) {
+                showAlert("Error", "Failed: " + e.getMessage());
+            }
+        });
+
+        viewDocBtn.setOnAction(event -> {
+            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Application", "Please select an application first.");
+                return;
+            }
+            Student student = selected.getStudent();
+            if (student.getDocumentPaths().isEmpty()) {
+                showAlert("No Document", "No document has been uploaded by this student.");
+                return;
+            }
+            openFile(student.getDocumentPaths().get(0));
+        });
+
+        viewPaymentBtn.setOnAction(event -> {
+            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Select Application", "Please select an application first.");
+                return;
+            }
+            Student student = selected.getStudent();
+            if (student.getPaymentSlipPath() == null || student.getPaymentSlipPath().isBlank()) {
+                showAlert("No Payment Slip", "No payment slip has been uploaded by this student.");
+                return;
+            }
+            openFile(student.getPaymentSlipPath());
+        });
+
+        assignBtn.setOnAction(event -> {
+            DormApplication selected = applicationTable.getSelectionModel().getSelectedItem();
+            if (selected == null || buildingField.getText().isBlank()) {
+                showAlert("Missing Data", "Select an application and enter a building name.");
+                return;
+            }
+            if (!service.isReadyForAssignment(selected)) {
+                showAlert("Not Ready", "This student is not ready for building assignment. " +
+                    "Government students need Phase One approval. Self-sponsored need Phase Two approval.");
                 return;
             }
             try {
                 service.assignBuilding(selected.getStudent(), buildingField.getText().trim());
                 refresh();
+                showAlert("Assigned", "Building assigned successfully.");
             } catch (Exception e) {
                 showAlert("Error", "Failed to assign: " + e.getMessage());
             }
         });
 
-        HBox actions = new HBox(10, statusBox, noteField, updateButton, buildingField, assignButton);
-        actions.setPadding(new Insets(10));
+        // Layout
+        HBox actionRow1 = new HBox(10, new Label("Note:"), noteField, approveBtn, declineBtn, resubmitBtn);
+        actionRow1.setPadding(new Insets(5));
+        
+        HBox actionRow2 = new HBox(10, viewDocBtn, viewPaymentBtn, new Label("Building:"), buildingField, assignBtn);
+        actionRow2.setPadding(new Insets(5));
 
-        VBox wrapper = new VBox(10, applicationTable, actions);
-        wrapper.setPadding(new Insets(10));
-        tab.setContent(wrapper);
+        VBox actions = new VBox(5, actionRow1, actionRow2);
+        
+        VBox tableSection = new VBox(10, applicationTable, actions);
+        
+        VBox detailsSection = new VBox(5, new Label("Selected Application Details:"), detailsArea);
+        detailsSection.setPrefWidth(300);
+        detailsSection.setPadding(new Insets(10));
+
+        HBox mainContent = new HBox(10, tableSection, detailsSection);
+        mainContent.setPadding(new Insets(10));
+        
+        tab.setContent(mainContent);
         return tab;
+    }
+
+    private void showApplicationDetails(DormApplication app) {
+        Student s = app.getStudent();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Name: ").append(s.getDisplayName()).append("\n");
+        sb.append("Student ID: ").append(s.getStudentId()).append("\n");
+        sb.append("City: ").append(s.getCity()).append("\n");
+        sb.append("Gender: ").append(s.getGender() != null ? s.getGender().name() : "-").append("\n");
+        sb.append("Sponsorship: ").append(s.getSponsorshipType() != null ? s.getSponsorshipType().name() : "-").append("\n");
+        sb.append("Disability: ").append(s.getDisabilityInfo() != null ? s.getDisabilityInfo() : "None").append("\n");
+        sb.append("Status: ").append(app.getStatus().name()).append("\n");
+        sb.append("Admin Note: ").append(app.getAdminNote() != null ? app.getAdminNote() : "-").append("\n");
+        sb.append("\nDocuments: ").append(s.getDocumentPaths().isEmpty() ? "None" : String.join(", ", s.getDocumentPaths())).append("\n");
+        sb.append("Payment Slip: ").append(s.getPaymentSlipPath() != null ? s.getPaymentSlipPath() : "None").append("\n");
+        sb.append("Assigned Building: ").append(s.getAssignedBuilding() != null ? s.getAssignedBuilding() : "-");
+        
+        detailsArea.setText(sb.toString());
+    }
+
+    private void openFile(String path) {
+        try {
+            File file = new File(path);
+            if (!file.exists()) {
+                showAlert("File Not Found", "The file does not exist: " + path);
+                return;
+            }
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(file);
+            } else {
+                showAlert("Cannot Open", "Desktop is not supported. File path: " + path);
+            }
+        } catch (IOException e) {
+            showAlert("Error", "Could not open file: " + e.getMessage());
+        }
     }
 
     private Tab createAnnouncementsTab() {
@@ -170,6 +341,8 @@ public class AdminDashboardDb {
         recipientBox.setItems(FXCollections.observableArrayList(
                 service.getStudents().stream().map(Student::getUsername).collect(Collectors.toList())
         ));
+        recipientBox.setPromptText("Select Student");
+        
         TextArea messageArea = new TextArea();
         messageArea.setPrefRowCount(3);
         Button sendButton = new Button("Send Message");
@@ -209,6 +382,7 @@ public class AdminDashboardDb {
         TextField studentIdField = new TextField();
         Button searchButton = new Button("Search");
         Label resultLabel = new Label();
+        resultLabel.setWrapText(true);
 
         searchButton.setOnAction(event -> {
             String id = studentIdField.getText().trim();
@@ -225,7 +399,7 @@ public class AdminDashboardDb {
             }
         });
 
-        Button exportButton = new Button("Export to CSV");
+        Button exportButton = new Button("Export All Students to CSV");
         exportButton.setOnAction(event -> exportToCsv());
 
         grid.addRow(0, new Label("Student ID"), studentIdField, searchButton);
@@ -236,9 +410,6 @@ public class AdminDashboardDb {
         return tab;
     }
 
-    /**
-     * Demonstrates File I/O - exports student data to CSV file
-     */
     private void exportToCsv() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Save Student List");
@@ -248,13 +419,19 @@ public class AdminDashboardDb {
             return;
         }
         try (FileWriter writer = new FileWriter(file)) {
-            writer.write("Name,Student ID,City,Building\n");
+            writer.write("Name,Student ID,City,Gender,Sponsorship,Building,Status\n");
             for (Student student : service.getStudents()) {
-                writer.write(String.format("%s,%s,%s,%s\n",
+                String status = service.getApplicationForStudent(student)
+                        .map(app -> app.getStatus().name())
+                        .orElse("No Application");
+                writer.write(String.format("%s,%s,%s,%s,%s,%s,%s\n",
                         student.getDisplayName(),
                         student.getStudentId(),
                         student.getCity(),
-                        safeValue(student.getAssignedBuilding())));
+                        student.getGender() != null ? student.getGender().name() : "-",
+                        student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-",
+                        safeValue(student.getAssignedBuilding()),
+                        status));
             }
             showAlert("Export Successful", "Student list exported to " + file.getName());
         } catch (IOException e) {
@@ -266,8 +443,14 @@ public class AdminDashboardDb {
         String status = service.getApplicationForStudent(student)
                 .map(app -> app.getStatus().name())
                 .orElse("No application");
-        return String.format("%s | %s | %s | Status: %s | Building: %s",
-                student.getDisplayName(), student.getStudentId(), student.getCity(), status, safeValue(student.getAssignedBuilding()));
+        return String.format("Name: %s\nID: %s\nCity: %s\nGender: %s\nSponsorship: %s\nStatus: %s\nBuilding: %s",
+                student.getDisplayName(), 
+                student.getStudentId(), 
+                student.getCity(),
+                student.getGender() != null ? student.getGender().name() : "-",
+                student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-",
+                status, 
+                safeValue(student.getAssignedBuilding()));
     }
 
     private void refresh() {
@@ -286,6 +469,12 @@ public class AdminDashboardDb {
         } catch (Exception e) {
             showAlert("Error", "Failed to refresh: " + e.getMessage());
         }
+    }
+
+    private void logout() {
+        LoginViewDb loginView = new LoginViewDb(service, stage);
+        Scene scene = new Scene(loginView.getRoot(), 900, 600);
+        stage.setScene(scene);
     }
 
     private String safeValue(String value) {

@@ -60,16 +60,18 @@ public class DatabaseDormService {
     // ========== Student Management ==========
     
     /**
-     * Register a new student
+     * Register a new student with gender
      */
-    public Student registerStudent(String username, String password, String fullName, String studentId, String city) {
+    public Student registerStudent(String username, String password, String fullName, 
+                                   String studentId, String city, Gender gender) {
         Student student = new Student(
             UUID.randomUUID().toString(),
             username,
             password,
             fullName,
             studentId,
-            city
+            city,
+            gender
         );
         
         studentRepository.save(student);
@@ -97,25 +99,60 @@ public class DatabaseDormService {
         return studentRepository.findByBuilding(buildingName);
     }
     
+    /**
+     * Update student information
+     */
+    public void updateStudent(Student student) {
+        studentRepository.update(student);
+    }
+    
     // ========== Application Management ==========
     
     /**
-     * Submit a new dormitory application
+     * Submit Phase One application (initial application)
      */
-    public DormApplication submitApplication(Student student, String sponsorshipType, String disabilityInfo) {
+    public DormApplication submitPhaseOneApplication(Student student, SponsorshipType sponsorshipType, 
+                                                      String disabilityInfo, String documentPath) {
         // Update student information
         student.setSponsorshipType(sponsorshipType);
         student.setDisabilityInfo(disabilityInfo);
+        if (documentPath != null && !documentPath.isBlank()) {
+            student.addDocumentPath(documentPath);
+        }
         studentRepository.update(student);
         
-        // Create application
+        // Check if application already exists
+        Optional<DormApplication> existing = applicationRepository.findByStudent(student);
+        if (existing.isPresent()) {
+            // Update existing application to pending
+            DormApplication app = existing.get();
+            app.setStatus(ApplicationStatus.PHASE_ONE_PENDING);
+            applicationRepository.update(app);
+            return app;
+        }
+        
+        // Create new application
         DormApplication application = new DormApplication(
             UUID.randomUUID().toString(),
             student
         );
+        application.setStatus(ApplicationStatus.PHASE_ONE_PENDING);
         
         applicationRepository.save(application);
         return application;
+    }
+    
+    /**
+     * Submit Phase Two application (payment slip for self-sponsored students)
+     */
+    public void submitPhaseTwoApplication(Student student, String paymentSlipPath) {
+        student.setPaymentSlipPath(paymentSlipPath);
+        studentRepository.update(student);
+        
+        applicationRepository.findByStudent(student).ifPresent(app -> {
+            app.setStatus(ApplicationStatus.PHASE_TWO_PENDING);
+            applicationRepository.update(app);
+        });
     }
     
     /**
@@ -133,7 +170,52 @@ public class DatabaseDormService {
     }
     
     /**
-     * Update application status and note
+     * Approve Phase One application
+     */
+    public void approvePhaseOne(DormApplication application, String note) {
+        application.setStatus(ApplicationStatus.PHASE_ONE_APPROVED);
+        application.setAdminNote(note);
+        applicationRepository.update(application);
+    }
+    
+    /**
+     * Decline Phase One application
+     */
+    public void declinePhaseOne(DormApplication application, String note) {
+        application.setStatus(ApplicationStatus.PHASE_ONE_DECLINED);
+        application.setAdminNote(note);
+        applicationRepository.update(application);
+    }
+    
+    /**
+     * Request resubmission for Phase One
+     */
+    public void requestResubmit(DormApplication application, String note) {
+        application.setStatus(ApplicationStatus.PHASE_ONE_RESUBMIT);
+        application.setAdminNote(note);
+        applicationRepository.update(application);
+    }
+    
+    /**
+     * Approve Phase Two application (payment verified)
+     */
+    public void approvePhaseTwoApplication(DormApplication application, String note) {
+        application.setStatus(ApplicationStatus.PHASE_TWO_APPROVED);
+        application.setAdminNote(note);
+        applicationRepository.update(application);
+    }
+    
+    /**
+     * Decline Phase Two application (payment rejected)
+     */
+    public void declinePhaseTwoApplication(DormApplication application, String note) {
+        application.setStatus(ApplicationStatus.PHASE_TWO_DECLINED);
+        application.setAdminNote(note);
+        applicationRepository.update(application);
+    }
+    
+    /**
+     * Update application status and note (generic)
      */
     public void updateApplication(DormApplication application, ApplicationStatus status, String note) {
         application.setStatus(status);
@@ -142,14 +224,41 @@ public class DatabaseDormService {
     }
     
     /**
-     * Delete an application (only if not reviewed)
+     * Delete an application (only if pending)
      */
     public void deleteApplication(Student student) {
         applicationRepository.findByStudent(student).ifPresent(app -> {
-            if (app.getStatus() == ApplicationStatus.NOT_SEEN) {
+            if (app.getStatus() == ApplicationStatus.PHASE_ONE_PENDING) {
                 applicationRepository.delete(app);
             }
         });
+    }
+    
+    /**
+     * Check if student can fill Phase Two (self-sponsored and phase one approved)
+     */
+    public boolean canFillPhaseTwo(Student student) {
+        if (student.getSponsorshipType() != SponsorshipType.SELF_SPONSORED) {
+            return false;
+        }
+        return applicationRepository.findByStudent(student)
+                .map(app -> app.getStatus() == ApplicationStatus.PHASE_ONE_APPROVED)
+                .orElse(false);
+    }
+    
+    /**
+     * Check if student is ready for building assignment
+     */
+    public boolean isReadyForAssignment(DormApplication application) {
+        Student student = application.getStudent();
+        
+        // Government students: ready after phase one approval
+        if (student.getSponsorshipType() == SponsorshipType.GOVERNMENT) {
+            return application.getStatus() == ApplicationStatus.PHASE_ONE_APPROVED;
+        }
+        
+        // Self-sponsored students: ready after phase two approval
+        return application.getStatus() == ApplicationStatus.PHASE_TWO_APPROVED;
     }
     
     // ========== Building Assignment ==========

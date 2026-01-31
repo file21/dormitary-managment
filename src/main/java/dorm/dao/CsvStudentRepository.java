@@ -1,5 +1,7 @@
 package dorm.dao;
 
+import dorm.model.Gender;
+import dorm.model.SponsorshipType;
 import dorm.model.Student;
 import dorm.util.CsvHelper;
 
@@ -15,7 +17,7 @@ import java.util.Optional;
 public class CsvStudentRepository implements StudentRepository {
     
     private static final String FILENAME = "students.csv";
-    private static final String HEADER = "id,username,password,display_name,student_id,city,sponsorship_type,disability_info,assigned_building,entry_date,withdrawal_date";
+    private static final String HEADER = "id,username,password,display_name,student_id,city,gender,sponsorship_type,disability_info,document_paths,payment_slip_path,assigned_building,entry_date,withdrawal_date";
     
     @Override
     public Optional<Student> findByStudentId(String studentId) {
@@ -70,7 +72,7 @@ public class CsvStudentRepository implements StudentRepository {
         List<Student> students = new ArrayList<>();
         
         for (String[] record : records) {
-            if (record.length >= 6) {
+            if (record.length >= 7) {
                 students.add(recordToStudent(record));
             }
         }
@@ -82,29 +84,67 @@ public class CsvStudentRepository implements StudentRepository {
      * Convert CSV record to Student object
      */
     private Student recordToStudent(String[] record) {
+        Gender gender = Gender.MALE;
+        try {
+            if (record.length > 6 && record[6] != null && !record[6].isEmpty()) {
+                gender = Gender.valueOf(record[6]);
+            }
+        } catch (Exception e) {
+            gender = Gender.MALE;
+        }
+        
         Student student = new Student(
             record[0],  // id
             record[1],  // username
             record[2],  // password
             record[3],  // display_name
             record[4],  // student_id
-            record[5]   // city
+            record[5],  // city
+            gender      // gender
         );
         
-        if (record.length > 6) {
-            student.setSponsorshipType(CsvHelper.emptyToNull(record[6]));
+        // sponsorship_type
+        if (record.length > 7 && record[7] != null && !record[7].isEmpty()) {
+            try {
+                student.setSponsorshipType(SponsorshipType.valueOf(record[7]));
+            } catch (Exception e) {
+                // ignore invalid value
+            }
         }
-        if (record.length > 7) {
-            student.setDisabilityInfo(CsvHelper.emptyToNull(record[7]));
-        }
+        
+        // disability_info
         if (record.length > 8) {
-            student.setAssignedBuilding(CsvHelper.emptyToNull(record[8]));
+            student.setDisabilityInfo(CsvHelper.emptyToNull(record[8]));
         }
-        if (record.length > 9) {
-            student.setEntryDate(CsvHelper.emptyToNull(record[9]));
+        
+        // document_paths (semicolon-separated)
+        if (record.length > 9 && record[9] != null && !record[9].isEmpty()) {
+            String[] paths = record[9].split(";");
+            for (String path : paths) {
+                if (!path.trim().isEmpty()) {
+                    student.addDocumentPath(path.trim());
+                }
+            }
         }
+        
+        // payment_slip_path
         if (record.length > 10) {
-            student.setWithdrawalDate(CsvHelper.emptyToNull(record[10]));
+            student.setPaymentSlipPath(CsvHelper.emptyToNull(record[10]));
+        }
+        
+        // assigned_building
+        if (record.length > 11) {
+            student.setAssignedBuilding(CsvHelper.emptyToNull(record[11]));
+        }
+        
+        // entry_date
+        if (record.length > 12) {
+            student.setEntryDate(CsvHelper.emptyToNull(record[12]));
+        }
+        
+        // withdrawal_date
+        if (record.length > 13) {
+            student.setWithdrawalDate(CsvHelper.emptyToNull(record[13]));
         }
         
         return student;
@@ -114,6 +154,9 @@ public class CsvStudentRepository implements StudentRepository {
      * Convert Student to CSV record
      */
     private String[] studentToRecord(Student student) {
+        // Join document paths with semicolon
+        String docPaths = String.join(";", student.getDocumentPaths());
+        
         return new String[] {
             student.getId(),
             student.getUsername(),
@@ -121,8 +164,11 @@ public class CsvStudentRepository implements StudentRepository {
             student.getDisplayName(),
             student.getStudentId(),
             CsvHelper.nullSafe(student.getCity()),
-            CsvHelper.nullSafe(student.getSponsorshipType()),
+            student.getGender() != null ? student.getGender().name() : Gender.MALE.name(),
+            student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "",
             CsvHelper.nullSafe(student.getDisabilityInfo()),
+            docPaths,
+            CsvHelper.nullSafe(student.getPaymentSlipPath()),
             CsvHelper.nullSafe(student.getAssignedBuilding()),
             CsvHelper.nullSafe(student.getEntryDate()),
             CsvHelper.nullSafe(student.getWithdrawalDate())

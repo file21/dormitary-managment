@@ -9,7 +9,7 @@ public class DormApplication {
     public DormApplication(String id, Student student) {
         this.id = id;
         this.student = student;
-        this.status = ApplicationStatus.NOT_SEEN;
+        this.status = ApplicationStatus.PHASE_ONE_PENDING;
     }
 
     public String getId() {

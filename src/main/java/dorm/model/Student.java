@@ -6,7 +6,8 @@ import java.util.List;
 public class Student extends User {
     private final String studentId;
     private String city;
-    private String sponsorshipType;
+    private Gender gender;
+    private SponsorshipType sponsorshipType;
     private String disabilityInfo;
     private final List<String> documentPaths;
     private String paymentSlipPath;
@@ -14,10 +15,11 @@ public class Student extends User {
     private String entryDate;
     private String withdrawalDate;
 
-    public Student(String id, String username, String password, String displayName, String studentId, String city) {
+    public Student(String id, String username, String password, String displayName, String studentId, String city, Gender gender) {
         super(id, username, password, Role.STUDENT, displayName);
         this.studentId = studentId;
         this.city = city;
+        this.gender = gender;
         this.documentPaths = new ArrayList<>();
     }
 
@@ -33,11 +35,19 @@ public class Student extends User {
         this.city = city;
     }
 
-    public String getSponsorshipType() {
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public SponsorshipType getSponsorshipType() {
         return sponsorshipType;
     }
 
-    public void setSponsorshipType(String sponsorshipType) {
+    public void setSponsorshipType(SponsorshipType sponsorshipType) {
         this.sponsorshipType = sponsorshipType;
     }
 
@@ -56,6 +66,13 @@ public class Student extends User {
     public void addDocumentPath(String path) {
         if (path != null && !path.isBlank()) {
             documentPaths.add(path);
+        }
+    }
+    
+    public void setDocumentPaths(List<String> paths) {
+        documentPaths.clear();
+        if (paths != null) {
+            documentPaths.addAll(paths);
         }
     }
 

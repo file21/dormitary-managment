@@ -1,14 +1,17 @@
 package dorm.ui;
 
+import dorm.model.Gender;
 import dorm.model.Role;
 import dorm.model.Student;
 import dorm.model.User;
 import dorm.service.DormService;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.Tab;
@@ -20,6 +23,9 @@ import javafx.stage.Stage;
 
 import java.util.Optional;
 
+/**
+ * Old in-memory version of LoginView (not used - LoginViewDb is used instead)
+ */
 public class LoginView {
     private final DormService service;
     private final Stage stage;
@@ -83,6 +89,8 @@ public class LoginView {
         TextField fullNameField = new TextField();
         TextField studentIdField = new TextField();
         TextField cityField = new TextField();
+        ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
+        genderBox.setPromptText("Select Gender");
         TextField usernameField = new TextField();
         PasswordField passwordField = new PasswordField();
         Button registerButton = new Button("Create Account");
@@ -90,13 +98,15 @@ public class LoginView {
         form.addRow(0, new Label("Full Name"), fullNameField);
         form.addRow(1, new Label("Student ID"), studentIdField);
         form.addRow(2, new Label("City"), cityField);
-        form.addRow(3, new Label("Username"), usernameField);
-        form.addRow(4, new Label("Password"), passwordField);
-        form.add(registerButton, 1, 5);
+        form.addRow(3, new Label("Gender"), genderBox);
+        form.addRow(4, new Label("Username"), usernameField);
+        form.addRow(5, new Label("Password"), passwordField);
+        form.add(registerButton, 1, 6);
 
         registerButton.setOnAction(event -> {
-            if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || cityField.getText().isBlank()
-                    || usernameField.getText().isBlank() || passwordField.getText().isBlank()) {
+            if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || 
+                cityField.getText().isBlank() || genderBox.getValue() == null ||
+                usernameField.getText().isBlank() || passwordField.getText().isBlank()) {
                 showAlert("Missing Data", "Please fill in all registration fields.");
                 return;
             }
@@ -105,7 +115,8 @@ public class LoginView {
                     passwordField.getText().trim(),
                     fullNameField.getText().trim(),
                     studentIdField.getText().trim(),
-                    cityField.getText().trim()
+                    cityField.getText().trim(),
+                    genderBox.getValue()
             );
             showAlert("Account Created", "Student account created. You can now log in.");
             switchToDashboard(student);
