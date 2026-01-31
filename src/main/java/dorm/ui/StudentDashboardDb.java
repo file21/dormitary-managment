@@ -1,39 +1,21 @@
 package dorm.ui;
 
-import dorm.model.ApplicationStatus;
-import dorm.model.DormApplication;
-import dorm.model.SponsorshipType;
-import dorm.model.Student;
+import dorm.model.*;
 import dorm.service.DatabaseDormService;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.File;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Student dashboard UI with two-phase application system.
- * Phase One: Initial application for all students
- * Phase Two: Payment slip (4500 birr) for self-sponsored students only
- */
 public class StudentDashboardDb {
     private final DatabaseDormService service;
     private final Student student;
@@ -41,9 +23,7 @@ public class StudentDashboardDb {
     private final BorderPane root;
     private final ListView<String> announcementList;
     private final ListView<String> messageList;
-    private final Label statusLabel;
-    private final Label phaseOneStatusLabel;
-    private final Label phaseTwoStatusLabel;
+    private Tab phaseTwoTab;
 
     public StudentDashboardDb(DatabaseDormService service, Student student, Stage stage) {
         this.service = service;
@@ -52,9 +32,6 @@ public class StudentDashboardDb {
         this.root = new BorderPane();
         this.announcementList = new ListView<>();
         this.messageList = new ListView<>();
-        this.statusLabel = new Label();
-        this.phaseOneStatusLabel = new Label();
-        this.phaseTwoStatusLabel = new Label();
         build();
         refresh();
     }
@@ -64,9 +41,8 @@ public class StudentDashboardDb {
     }
 
     private void build() {
-        // Header with logout button
-        Label headerLabel = new Label("Student Dashboard - " + student.getDisplayName());
-        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        Label headerLabel = new Label("Welcome, " + student.getDisplayName());
+        headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(event -> logout());
@@ -76,176 +52,228 @@ public class StudentDashboardDb {
         root.setTop(header);
 
         TabPane tabs = new TabPane();
-        tabs.getTabs().add(createAnnouncementTab());
-        tabs.getTabs().add(createPhaseOneTab());
-        tabs.getTabs().add(createPhaseTwoTab());
-        tabs.getTabs().add(createMessagesTab());
         tabs.getTabs().add(createProfileTab());
-
+        tabs.getTabs().add(createPhaseOneTab());
+        phaseTwoTab = createPhaseTwoTab();
+        tabs.getTabs().add(phaseTwoTab);
+        tabs.getTabs().add(createAnnouncementsTab());
+        tabs.getTabs().add(createMessagesTab());
+        
         root.setCenter(tabs);
     }
 
-    private Tab createAnnouncementTab() {
-        Tab tab = new Tab("Announcements");
+    private Tab createProfileTab() {
+        Tab tab = new Tab("Profile");
         tab.setClosable(false);
-        tab.setContent(announcementList);
+
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        grid.addRow(0, new Label("Name:"), new Label(student.getDisplayName()));
+        grid.addRow(1, new Label("Student ID:"), new Label(student.getStudentId()));
+        grid.addRow(2, new Label("Gender:"), new Label(student.getGender() != null ? student.getGender().name() : "-"));
+        grid.addRow(3, new Label("Sponsorship:"), new Label(student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-"));
+        grid.addRow(4, new Label("Building:"), new Label(student.getAssignedBuilding()));
+        
+        // Application status
+        String status = service.getApplicationForStudent(student)
+                .map(app -> app.getStatus().name())
+                .orElse("Not Applied");
+        grid.addRow(5, new Label("Status:"), new Label(status));
+
+        tab.setContent(grid);
         return tab;
     }
 
     private Tab createPhaseOneTab() {
-        Tab tab = new Tab("Application - Phase One");
+        Tab tab = new Tab("Application - Phase 1");
         tab.setClosable(false);
 
         GridPane form = new GridPane();
-        form.setPadding(new Insets(15));
+        form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
 
-        ComboBox<SponsorshipType> sponsorshipBox = new ComboBox<>(
-            FXCollections.observableArrayList(SponsorshipType.values())
-        );
-        sponsorshipBox.setPromptText("Select Sponsorship Type");
-        
+        ComboBox<SponsorshipType> sponsorshipBox = new ComboBox<>(FXCollections.observableArrayList(SponsorshipType.values()));
+        ComboBox<Residency> residencyBox = new ComboBox<>(FXCollections.observableArrayList(Residency.values()));
+        TextField cityField = new TextField();
+        TextField subcityField = new TextField();
+        TextField woredaField = new TextField();
         TextField disabilityField = new TextField();
-        disabilityField.setPromptText("Leave blank if none");
-        
-        TextField documentField = new TextField();
-        documentField.setEditable(false);
-        documentField.setPromptText("Upload ID/Student card image");
-        Button chooseDocButton = new Button("Choose Document");
+        Button submitButton = new Button("Submit Phase 1");
+        Label statusLabel = new Label();
 
-        Button submitButton = new Button("Submit Phase One Application");
-        Button deleteButton = new Button("Delete Pending Application");
+        // Pre-fill if already submitted
+        if (student.getSponsorshipType() != null) sponsorshipBox.setValue(student.getSponsorshipType());
+        if (student.getResidency() != null) residencyBox.setValue(student.getResidency());
+        if (student.getCity() != null) cityField.setText(student.getCity());
+        if (student.getSubcity() != null) subcityField.setText(student.getSubcity());
+        if (student.getWoreda() != null) woredaField.setText(student.getWoreda());
+        if (student.getDisabilityInfo() != null) disabilityField.setText(student.getDisabilityInfo());
 
-        form.addRow(0, new Label("Sponsorship Type *"), sponsorshipBox);
-        form.addRow(1, new Label("Disability Info"), disabilityField);
-        form.addRow(2, new Label("Document (ID/Card)"), new HBox(10, documentField, chooseDocButton));
-        form.addRow(3, new Label("Status"), phaseOneStatusLabel);
-        form.addRow(4, submitButton, deleteButton);
+        form.addRow(0, new Label("Sponsorship Type"), sponsorshipBox);
+        form.addRow(1, new Label("Residency"), residencyBox);
+        form.addRow(2, new Label("City"), cityField);
+        form.addRow(3, new Label("Subcity"), subcityField);
+        form.addRow(4, new Label("Woreda"), woredaField);
+        form.addRow(5, new Label("Disability (if any)"), disabilityField);
+        form.add(submitButton, 1, 6);
+        form.add(statusLabel, 1, 7);
 
-        // Pre-fill if student already has data
-        if (student.getSponsorshipType() != null) {
-            sponsorshipBox.setValue(student.getSponsorshipType());
-        }
-        if (student.getDisabilityInfo() != null) {
-            disabilityField.setText(student.getDisabilityInfo());
-        }
-
-        chooseDocButton.setOnAction(event -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Select Document Image");
-            chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
-            );
-            File file = chooser.showOpenDialog(root.getScene().getWindow());
-            if (file != null) {
-                documentField.setText(file.getAbsolutePath());
+        // Check current status
+        Optional<DormApplication> existingApp = service.getApplicationForStudent(student);
+        if (existingApp.isPresent()) {
+            ApplicationStatus appStatus = existingApp.get().getStatus();
+            statusLabel.setText("Status: " + appStatus.name());
+            
+            if (appStatus != ApplicationStatus.PHASE_ONE_PENDING && 
+                appStatus != ApplicationStatus.PHASE_ONE_RESUBMIT) {
+                submitButton.setDisable(true);
+                sponsorshipBox.setDisable(true);
+                residencyBox.setDisable(true);
+                cityField.setDisable(true);
+                subcityField.setDisable(true);
+                woredaField.setDisable(true);
+                disabilityField.setDisable(true);
             }
-        });
+            
+            String note = existingApp.get().getAdminNote();
+            if (note != null && !note.isBlank()) {
+                statusLabel.setText("Status: " + appStatus.name() + " | Note: " + note);
+            }
+        }
 
         submitButton.setOnAction(event -> {
-            if (sponsorshipBox.getValue() == null) {
-                showAlert("Missing Data", "Please select sponsorship type.");
+            if (sponsorshipBox.getValue() == null || residencyBox.getValue() == null ||
+                cityField.getText().isBlank() || subcityField.getText().isBlank() || 
+                woredaField.getText().isBlank()) {
+                showAlert("All fields except disability are required");
                 return;
             }
             
             try {
                 service.submitPhaseOneApplication(
-                    student, 
-                    sponsorshipBox.getValue(), 
-                    disabilityField.getText().trim(),
-                    documentField.getText()
+                    student,
+                    sponsorshipBox.getValue(),
+                    residencyBox.getValue(),
+                    cityField.getText().trim(),
+                    subcityField.getText().trim(),
+                    woredaField.getText().trim(),
+                    disabilityField.getText().trim()
                 );
+                statusLabel.setText("Status: PHASE_ONE_PENDING");
+                showAlert("Phase 1 submitted successfully");
                 refresh();
-                showAlert("Application Submitted", "Your Phase One application has been submitted for review.");
             } catch (Exception e) {
-                showAlert("Error", "Failed to submit application: " + e.getMessage());
+                showAlert("Failed: " + e.getMessage());
             }
         });
 
-        deleteButton.setOnAction(event -> {
-            try {
-                service.deleteApplication(student);
-                refresh();
-                showAlert("Application Deleted", "Pending application deleted.");
-            } catch (Exception e) {
-                showAlert("Error", "Failed to delete application: " + e.getMessage());
-            }
-        });
-
-        VBox info = new VBox(10,
-            new Label("Phase One Application"),
-            new Label("Submit your initial dormitory application."),
-            new Label("Government students: After approval, you will be assigned a building."),
-            new Label("Self-sponsored students: After approval, proceed to Phase Two for payment.")
-        );
-        info.setStyle("-fx-background-color: #f0f0f0; -fx-padding: 10;");
-        
-        VBox wrapper = new VBox(10, info, form);
-        wrapper.setPadding(new Insets(10));
-        tab.setContent(wrapper);
+        tab.setContent(form);
         return tab;
     }
 
     private Tab createPhaseTwoTab() {
-        Tab tab = new Tab("Application - Phase Two");
+        Tab tab = new Tab("Application - Phase 2");
         tab.setClosable(false);
 
         GridPane form = new GridPane();
-        form.setPadding(new Insets(15));
+        form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
 
-        TextField paymentSlipField = new TextField();
-        paymentSlipField.setEditable(false);
-        paymentSlipField.setPromptText("Upload payment slip (4500 Birr)");
-        Button chooseSlipButton = new Button("Choose Payment Slip");
-        Button submitButton = new Button("Submit Phase Two Application");
+        TextField motherNameField = new TextField();
+        TextField motherPhoneField = new TextField();
+        ComboBox<Residency> motherResidencyBox = new ComboBox<>(FXCollections.observableArrayList(Residency.values()));
+        TextField emergencyContactField = new TextField();
+        TextField transactionIdField = new TextField();
+        Button submitButton = new Button("Submit Phase 2");
+        Label statusLabel = new Label();
 
-        form.addRow(0, new Label("Payment Slip *"), new HBox(10, paymentSlipField, chooseSlipButton));
-        form.addRow(1, new Label("Status"), phaseTwoStatusLabel);
-        form.addRow(2, submitButton);
+        // Pre-fill if already submitted
+        if (student.getMotherName() != null) motherNameField.setText(student.getMotherName());
+        if (student.getMotherPhone() != null) motherPhoneField.setText(student.getMotherPhone());
+        if (student.getMotherResidency() != null) motherResidencyBox.setValue(student.getMotherResidency());
+        if (student.getEmergencyContact() != null) emergencyContactField.setText(student.getEmergencyContact());
+        if (student.getTransactionId() != null) transactionIdField.setText(student.getTransactionId());
 
-        chooseSlipButton.setOnAction(event -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Select Payment Slip Image");
-            chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
-            );
-            File file = chooser.showOpenDialog(root.getScene().getWindow());
-            if (file != null) {
-                paymentSlipField.setText(file.getAbsolutePath());
+        form.addRow(0, new Label("Mother's Name"), motherNameField);
+        form.addRow(1, new Label("Mother's Phone"), motherPhoneField);
+        form.addRow(2, new Label("Mother's Residency"), motherResidencyBox);
+        form.addRow(3, new Label("Emergency Contact"), emergencyContactField);
+        form.addRow(4, new Label("Transaction ID"), transactionIdField);
+        form.add(submitButton, 1, 5);
+        form.add(statusLabel, 1, 6);
+
+        // Check if Phase Two is accessible
+        boolean canFillPhaseTwo = service.canFillPhaseTwo(student);
+        
+        if (!canFillPhaseTwo) {
+            statusLabel.setText("Complete Phase 1 first and wait for approval");
+            motherNameField.setDisable(true);
+            motherPhoneField.setDisable(true);
+            motherResidencyBox.setDisable(true);
+            emergencyContactField.setDisable(true);
+            transactionIdField.setDisable(true);
+            submitButton.setDisable(true);
+            tab.setDisable(true);
+        } else {
+            Optional<DormApplication> existingApp = service.getApplicationForStudent(student);
+            if (existingApp.isPresent()) {
+                ApplicationStatus appStatus = existingApp.get().getStatus();
+                if (appStatus == ApplicationStatus.PHASE_TWO_PENDING ||
+                    appStatus == ApplicationStatus.PHASE_TWO_APPROVED ||
+                    appStatus == ApplicationStatus.PHASE_TWO_DECLINED ||
+                    appStatus == ApplicationStatus.ASSIGNED) {
+                    statusLabel.setText("Status: " + appStatus.name());
+                    if (appStatus != ApplicationStatus.PHASE_ONE_APPROVED) {
+                        submitButton.setDisable(true);
+                        motherNameField.setDisable(true);
+                        motherPhoneField.setDisable(true);
+                        motherResidencyBox.setDisable(true);
+                        emergencyContactField.setDisable(true);
+                        transactionIdField.setDisable(true);
+                    }
+                }
             }
-        });
+        }
 
         submitButton.setOnAction(event -> {
-            if (!service.canFillPhaseTwo(student)) {
-                showAlert("Not Available", "Phase Two is only for self-sponsored students with approved Phase One.");
-                return;
-            }
-            
-            if (paymentSlipField.getText().isBlank()) {
-                showAlert("Missing Data", "Please upload your payment slip.");
+            if (motherNameField.getText().isBlank() || motherPhoneField.getText().isBlank() ||
+                motherResidencyBox.getValue() == null || emergencyContactField.getText().isBlank() ||
+                transactionIdField.getText().isBlank()) {
+                showAlert("All fields are required");
                 return;
             }
             
             try {
-                service.submitPhaseTwoApplication(student, paymentSlipField.getText());
+                service.submitPhaseTwoApplication(
+                    student,
+                    motherNameField.getText().trim(),
+                    motherPhoneField.getText().trim(),
+                    motherResidencyBox.getValue(),
+                    emergencyContactField.getText().trim(),
+                    transactionIdField.getText().trim()
+                );
+                statusLabel.setText("Status: PHASE_TWO_PENDING");
+                showAlert("Phase 2 submitted successfully");
                 refresh();
-                showAlert("Payment Submitted", "Your payment slip has been submitted for verification.");
             } catch (Exception e) {
-                showAlert("Error", "Failed to submit: " + e.getMessage());
+                showAlert("Failed: " + e.getMessage());
             }
         });
 
-        VBox info = new VBox(10,
-            new Label("Phase Two Application (Self-Sponsored Students Only)"),
-            new Label("After Phase One approval, submit your payment slip of 4500 Birr."),
-            new Label("This section is locked for government-sponsored students.")
-        );
-        info.setStyle("-fx-background-color: #fff3cd; -fx-padding: 10;");
-        
-        VBox wrapper = new VBox(10, info, form);
+        tab.setContent(form);
+        return tab;
+    }
+
+    private Tab createAnnouncementsTab() {
+        Tab tab = new Tab("Announcements");
+        tab.setClosable(false);
+
+        VBox wrapper = new VBox(10, announcementList);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
         return tab;
@@ -255,57 +283,30 @@ public class StudentDashboardDb {
         Tab tab = new Tab("Messages");
         tab.setClosable(false);
 
-        ComboBox<String> recipientBox = new ComboBox<>();
-        recipientBox.setItems(FXCollections.observableArrayList(
-                service.getUsersByRole(dorm.model.Role.ADMIN).stream()
-                    .map(user -> user.getUsername()).collect(Collectors.toList())
-        ));
-        recipientBox.setPromptText("Select Admin");
-
         TextArea messageArea = new TextArea();
         messageArea.setPrefRowCount(3);
-        Button sendButton = new Button("Send Message");
+        Button sendButton = new Button("Send to Admin");
 
         sendButton.setOnAction(event -> {
-            if (recipientBox.getValue() == null || messageArea.getText().isBlank()) {
-                showAlert("Missing Data", "Select a recipient and enter a message.");
+            if (messageArea.getText().isBlank()) {
+                showAlert("Enter a message");
                 return;
             }
             try {
-                service.sendMessage(student.getUsername(), recipientBox.getValue(), messageArea.getText().trim());
+                service.sendMessage(student.getUsername(), "admin", messageArea.getText().trim());
                 messageArea.clear();
                 refresh();
             } catch (Exception e) {
-                showAlert("Error", "Failed to send message: " + e.getMessage());
+                showAlert("Failed: " + e.getMessage());
             }
         });
 
-        VBox form = new VBox(10, new Label("Send Message"), recipientBox, messageArea, sendButton);
+        VBox form = new VBox(10, messageArea, sendButton);
         form.setPadding(new Insets(10));
 
-        VBox wrapper = new VBox(10, form, new Label("Message History"), messageList);
+        VBox wrapper = new VBox(10, form, messageList);
         wrapper.setPadding(new Insets(10));
         tab.setContent(wrapper);
-        return tab;
-    }
-
-    private Tab createProfileTab() {
-        Tab tab = new Tab("Profile");
-        tab.setClosable(false);
-
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(15));
-        box.getChildren().addAll(
-                new Label("Name: " + student.getDisplayName()),
-                new Label("Student ID: " + student.getStudentId()),
-                new Label("City: " + student.getCity()),
-                new Label("Gender: " + (student.getGender() != null ? student.getGender().name() : "-")),
-                new Label("Sponsorship: " + (student.getSponsorshipType() != null ? student.getSponsorshipType().name() : "-")),
-                new Label("Assigned Building: " + valueOrDash(student.getAssignedBuilding())),
-                new Label("Entry Date: " + valueOrDash(student.getEntryDate())),
-                new Label("Withdrawal Date: " + valueOrDash(student.getWithdrawalDate()))
-        );
-        tab.setContent(box);
         return tab;
     }
 
@@ -313,42 +314,20 @@ public class StudentDashboardDb {
         try {
             announcementList.setItems(FXCollections.observableArrayList(
                     service.getAnnouncements().stream()
-                            .map(announcement -> announcement.getTitle() + " - " + announcement.getBody())
+                            .map(a -> a.getTitle() + ": " + a.getBody())
                             .collect(Collectors.toList())
             ));
-
             messageList.setItems(FXCollections.observableArrayList(
                     service.getMessagesForUser(student.getUsername()).stream()
-                            .map(message -> message.getSentAt() + " | " + message.getFromUser() + ": " + message.getContent())
+                            .map(m -> m.getSentAt() + " | " + m.getFromUser() + ": " + m.getContent())
                             .collect(Collectors.toList())
             ));
-
-            Optional<DormApplication> appOpt = service.getApplicationForStudent(student);
-            if (appOpt.isPresent()) {
-                DormApplication app = appOpt.get();
-                String note = app.getAdminNote() != null ? " (Note: " + app.getAdminNote() + ")" : "";
-                phaseOneStatusLabel.setText(app.getStatus().name() + note);
-                
-                // Update phase two status
-                if (student.getSponsorshipType() == SponsorshipType.GOVERNMENT) {
-                    phaseTwoStatusLabel.setText("Not applicable - Government sponsored");
-                } else if (service.canFillPhaseTwo(student)) {
-                    phaseTwoStatusLabel.setText("Ready to submit payment slip");
-                } else if (app.getStatus() == ApplicationStatus.PHASE_TWO_PENDING) {
-                    phaseTwoStatusLabel.setText("Payment slip under review");
-                } else if (app.getStatus() == ApplicationStatus.PHASE_TWO_APPROVED) {
-                    phaseTwoStatusLabel.setText("Payment verified - awaiting building assignment");
-                } else if (app.getStatus() == ApplicationStatus.PHASE_TWO_DECLINED) {
-                    phaseTwoStatusLabel.setText("Payment rejected" + note);
-                } else {
-                    phaseTwoStatusLabel.setText("Complete Phase One first");
-                }
-            } else {
-                phaseOneStatusLabel.setText("No application submitted");
-                phaseTwoStatusLabel.setText("Complete Phase One first");
-            }
+            
+            // Update Phase Two tab accessibility
+            boolean canFillPhaseTwo = service.canFillPhaseTwo(student);
+            phaseTwoTab.setDisable(!canFillPhaseTwo);
         } catch (Exception e) {
-            showAlert("Error", "Failed to refresh data: " + e.getMessage());
+            showAlert("Refresh failed: " + e.getMessage());
         }
     }
 
@@ -358,15 +337,10 @@ public class StudentDashboardDb {
         stage.setScene(scene);
     }
 
-    private void showAlert(String title, String message) {
+    private void showAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    private String valueOrDash(String value) {
-        return value == null || value.isBlank() ? "-" : value;
     }
 }

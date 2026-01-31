@@ -1,30 +1,52 @@
 package dorm.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Student extends User {
     private final String studentId;
-    private String city;
     private Gender gender;
+    
+    // Phase One - Address info
+    private Residency residency;
+    private String city;
+    private String subcity;
+    private String woreda;
     private SponsorshipType sponsorshipType;
     private String disabilityInfo;
-    private final List<String> documentPaths;
-    private String paymentSlipPath;
+    
+    // Phase Two - Emergency contact & payment
+    private String motherName;
+    private String motherPhone;
+    private Residency motherResidency;
+    private String emergencyContact;
+    private String transactionId;
+    
+    // Assignment
     private String assignedBuilding;
-    private String entryDate;
-    private String withdrawalDate;
 
-    public Student(String id, String username, String password, String displayName, String studentId, String city, Gender gender) {
+    public Student(String id, String username, String password, String displayName, String studentId, Gender gender) {
         super(id, username, password, Role.STUDENT, displayName);
         this.studentId = studentId;
-        this.city = city;
         this.gender = gender;
-        this.documentPaths = new ArrayList<>();
+        this.assignedBuilding = "unassigned";
     }
 
     public String getStudentId() {
         return studentId;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public Residency getResidency() {
+        return residency;
+    }
+
+    public void setResidency(Residency residency) {
+        this.residency = residency;
     }
 
     public String getCity() {
@@ -35,12 +57,20 @@ public class Student extends User {
         this.city = city;
     }
 
-    public Gender getGender() {
-        return gender;
+    public String getSubcity() {
+        return subcity;
     }
 
-    public void setGender(Gender gender) {
-        this.gender = gender;
+    public void setSubcity(String subcity) {
+        this.subcity = subcity;
+    }
+
+    public String getWoreda() {
+        return woreda;
+    }
+
+    public void setWoreda(String woreda) {
+        this.woreda = woreda;
     }
 
     public SponsorshipType getSponsorshipType() {
@@ -59,29 +89,44 @@ public class Student extends User {
         this.disabilityInfo = disabilityInfo;
     }
 
-    public List<String> getDocumentPaths() {
-        return documentPaths;
+    public String getMotherName() {
+        return motherName;
     }
 
-    public void addDocumentPath(String path) {
-        if (path != null && !path.isBlank()) {
-            documentPaths.add(path);
-        }
-    }
-    
-    public void setDocumentPaths(List<String> paths) {
-        documentPaths.clear();
-        if (paths != null) {
-            documentPaths.addAll(paths);
-        }
+    public void setMotherName(String motherName) {
+        this.motherName = motherName;
     }
 
-    public String getPaymentSlipPath() {
-        return paymentSlipPath;
+    public String getMotherPhone() {
+        return motherPhone;
     }
 
-    public void setPaymentSlipPath(String paymentSlipPath) {
-        this.paymentSlipPath = paymentSlipPath;
+    public void setMotherPhone(String motherPhone) {
+        this.motherPhone = motherPhone;
+    }
+
+    public Residency getMotherResidency() {
+        return motherResidency;
+    }
+
+    public void setMotherResidency(Residency motherResidency) {
+        this.motherResidency = motherResidency;
+    }
+
+    public String getEmergencyContact() {
+        return emergencyContact;
+    }
+
+    public void setEmergencyContact(String emergencyContact) {
+        this.emergencyContact = emergencyContact;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
     }
 
     public String getAssignedBuilding() {
@@ -90,21 +135,5 @@ public class Student extends User {
 
     public void setAssignedBuilding(String assignedBuilding) {
         this.assignedBuilding = assignedBuilding;
-    }
-
-    public String getEntryDate() {
-        return entryDate;
-    }
-
-    public void setEntryDate(String entryDate) {
-        this.entryDate = entryDate;
-    }
-
-    public String getWithdrawalDate() {
-        return withdrawalDate;
-    }
-
-    public void setWithdrawalDate(String withdrawalDate) {
-        this.withdrawalDate = withdrawalDate;
     }
 }
