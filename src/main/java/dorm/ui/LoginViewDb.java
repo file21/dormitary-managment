@@ -1,29 +1,24 @@
 package dorm.ui;
 
+import dorm.model.College;
+import dorm.model.Gender;
 import dorm.model.Role;
 import dorm.model.Student;
 import dorm.model.User;
 import dorm.service.DatabaseDormService;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 import java.util.Optional;
 
-/**
- * Login view for the dormitory management system.
- * Demonstrates separation of concerns - UI logic separate from business logic.
- */
 public class LoginViewDb {
     private final DatabaseDormService service;
     private final Stage stage;
@@ -46,6 +41,7 @@ public class LoginViewDb {
         tab.setClosable(false);
 
         GridPane form = new GridPane();
+        form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
@@ -63,52 +59,75 @@ public class LoginViewDb {
             String password = passwordField.getText().trim();
             
             if (username.isEmpty() || password.isEmpty()) {
-                showAlert("Validation Error", "Username and password are required.");
+                showAlert("Username and password required");
                 return;
             }
             
-            Optional<User> user = service.authenticate(username, password);
-            if (user.isEmpty()) {
-                showAlert("Login Failed", "Invalid username or password.");
+            Optional<Object> authResult = service.authenticate(username, password);
+            if (authResult.isEmpty()) {
+                showAlert("Invalid credentials");
                 return;
             }
-            switchToDashboard(user.get());
+            
+            switchToDashboard(authResult.get());
         });
 
-        VBox wrapper = new VBox(10, new Label("Dormitory Management System"), form);
-        wrapper.setPadding(new Insets(20));
+        VBox wrapper = new VBox(form);
+        wrapper.setAlignment(Pos.CENTER);
         tab.setContent(wrapper);
         return tab;
     }
 
     private Tab createRegisterTab() {
-        Tab tab = new Tab("Student Registration");
+        Tab tab = new Tab("Register");
         tab.setClosable(false);
 
         GridPane form = new GridPane();
+        form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
 
         TextField fullNameField = new TextField();
         TextField studentIdField = new TextField();
-        TextField cityField = new TextField();
+        ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
+        
+        // College dropdown - shows full name
+        ComboBox<College> collegeBox = new ComboBox<>(FXCollections.observableArrayList(College.values()));
+        collegeBox.setConverter(new StringConverter<College>() {
+            @Override
+            public String toString(College college) {
+                return college != null ? college.getFullName() : "";
+            }
+            @Override
+            public College fromString(String string) {
+                return null;
+            }
+        });
+        
         TextField usernameField = new TextField();
         PasswordField passwordField = new PasswordField();
         Button registerButton = new Button("Create Account");
 
         form.addRow(0, new Label("Full Name"), fullNameField);
         form.addRow(1, new Label("Student ID"), studentIdField);
-        form.addRow(2, new Label("City"), cityField);
-        form.addRow(3, new Label("Username"), usernameField);
-        form.addRow(4, new Label("Password"), passwordField);
-        form.add(registerButton, 1, 5);
+        form.addRow(2, new Label("Gender"), genderBox);
+        form.addRow(3, new Label("College"), collegeBox);
+        form.addRow(4, new Label("Username"), usernameField);
+        form.addRow(5, new Label("Password (min 8 chars)"), passwordField);
+        form.add(registerButton, 1, 6);
 
         registerButton.setOnAction(event -> {
             if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || 
-                cityField.getText().isBlank() || usernameField.getText().isBlank() || 
-                passwordField.getText().isBlank()) {
-                showAlert("Missing Data", "Please fill in all registration fields.");
+                genderBox.getValue() == null || collegeBox.getValue() == null ||
+                usernameField.getText().isBlank() || passwordField.getText().isBlank()) {
+                showAlert("All fields required");
+                return;
+            }
+            
+            // Password validation - minimum 8 characters
+            if (passwordField.getText().length() < 8) {
+                showAlert("Password must be at least 8 characters");
                 return;
             }
             
@@ -118,38 +137,47 @@ public class LoginViewDb {
                         passwordField.getText().trim(),
                         fullNameField.getText().trim(),
                         studentIdField.getText().trim(),
-                        cityField.getText().trim()
+                        genderBox.getValue(),
+                        collegeBox.getValue()
                 );
-                showAlert("Account Created", "Student account created. You can now log in.");
                 switchToDashboard(student);
             } catch (Exception e) {
-                showAlert("Registration Failed", "Could not create account: " + e.getMessage());
+                showAlert("Registration failed: " + e.getMessage());
             }
         });
 
-        VBox wrapper = new VBox(10, new Label("Create Student Account"), form);
-        wrapper.setPadding(new Insets(20));
+        VBox wrapper = new VBox(form);
+        wrapper.setAlignment(Pos.CENTER);
         tab.setContent(wrapper);
         return tab;
     }
 
-    private void switchToDashboard(User user) {
+    private void switchToDashboard(Object authenticated) {
         Scene scene;
-        if (user.getRole() == Role.STUDENT) {
-            scene = new Scene(new StudentDashboardDb(service, (Student) user).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.ADMIN) {
-            scene = new Scene(new AdminDashboardDb(service, user).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.PROCTOR) {
-            scene = new Scene(new ProctorDashboardDb(service, user).getRoot(), 1100, 700);
+        
+        if (authenticated instanceof Student) {
+            Student student = (Student) authenticated;
+            scene = new Scene(new StudentDashboardDb(service, student, stage).getRoot(), 1200, 700);
+        } else if (authenticated instanceof User) {
+            User user = (User) authenticated;
+            if (user.getRole() == Role.ADMIN) {
+                scene = new Scene(new AdminDashboardDb(service, user, stage).getRoot(), 1200, 700);
+            } else if (user.getRole() == Role.OWNER) {
+                scene = new Scene(new OwnerDashboardDb(service, user, stage).getRoot(), 1200, 700);
+            } else {
+                showAlert("Unknown role");
+                return;
+            }
         } else {
-            scene = new Scene(new OwnerDashboardDb(service, user).getRoot(), 1100, 700);
+            showAlert("Unknown account type");
+            return;
         }
+        
         stage.setScene(scene);
     }
 
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
+    private void showAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

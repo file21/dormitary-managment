@@ -1,159 +1,130 @@
 # Dormitory Management System
 
-A comprehensive JavaFX desktop application for managing dormitory applications, assignments, and resident tracking with MySQL database integration.
+A JavaFX desktop application for managing dormitory applications and assignments with CSV file-based data persistence.
 
 ## Features
 
 ### For Students
 - Account registration and login
-- Submit dormitory applications
-- View application status and admin notes
-- Send/receive messages
-- Upload required documents
-- View assigned building and entry/withdrawal dates
+- Two-phase application system:
+  - **Phase One**: Sponsorship type, residency, address (city, subcity, woreda)
+  - **Phase Two**: Mother's info, emergency contact, transaction ID (unlocked after Phase One approval)
+- View application status
 
 ### For Admins
-- Review and update application statuses (Approve, Decline, Resubmit)
-- Post announcements to all students
-- Message students directly
-- Search students by ID
+- Review applications with checkbox selection
+- Bulk approve/decline/request resubmit
 - Assign buildings to approved students
-- Export student data to CSV
-
-### For Proctors
-- View students assigned to their building
-- Register student entry dates
-- Register student withdrawal dates
-- Message students in their building
+- Export selected students to CSV
+- Post announcements
+- Message students
 
 ### For Owners
 - All admin capabilities
-- Add and remove admin and proctor accounts
-- Assign buildings to proctors
-- Manage system-wide staff
+- Manage admin staff accounts
 
-## Technology Stack
+## Application Flow
 
-- **Java 21** - Core programming language
-- **JavaFX 21** - Desktop GUI framework
-- **MySQL** - Database (via JDBC)
-- **HikariCP** - Database connection pooling
-- **Maven** - Build and dependency management
+1. **Registration**: Students create account with name, ID, gender, college (8+ char password)
+2. **Phase One**: Fill sponsorship, residency, address info
+3. **Admin Review**: Approve, decline, or request resubmit
+4. **Phase Two**: (After Phase One approval) Fill mother's info, emergency contact, transaction ID
+5. **Building Assignment**: Admin assigns building to approved students
 
-## OOP & SOLID Principles
+## Requirements
 
-This system demonstrates:
-- **Encapsulation** - Private fields with controlled access
-- **Abstraction** - Repository interfaces hiding implementation details
-- **Inheritance** - Student extends User
-- **Polymorphism** - Repository pattern with interchangeable implementations
+- **Java JDK 21** or later
+- **JavaFX 21** (OpenJFX)
 
-SOLID Principles:
-- **SRP** - Each class has a single responsibility
-- **OCP** - Extensible through interfaces
-- **LSP** - Student is substitutable for User
-- **ISP** - Focused, specific repository interfaces
-- **DIP** - Service depends on abstractions, not concrete classes
+## Installation
 
-See [SOLID_PRINCIPLES.md](SOLID_PRINCIPLES.md) for detailed documentation.
+### Step 1: Install Java JDK 21
 
-## Setup
-
-### 1. Install MySQL
-
+**Ubuntu/Debian:**
 ```bash
-sudo apt-get install mysql-server
+sudo apt-get update
+sudo apt-get install openjdk-21-jdk
 ```
 
-### 2. Create Database
+**Windows/macOS:**
+Download from https://adoptium.net/
 
+### Step 2: Install JavaFX
+
+**Ubuntu/Debian:**
 ```bash
-mysql -u root -p < src/main/resources/sql/simple_schema.sql
+sudo apt-get install openjfx
 ```
 
-This creates:
-- Database: `dormdb`
-- Tables: users, students, applications, announcements, messages, building_assignments
-- Sample data (admin, proctor, owner, student accounts)
+**Windows/macOS:**
+1. Download JavaFX SDK from https://openjfx.io/
+2. Extract to a folder
+3. Update `JAVAFX_PATH` in compile.sh/compile.bat
 
-### 3. Configure Database Connection (Optional)
+## How to Compile and Run
 
-By default connects to `jdbc:mysql://localhost:3306/dormdb` with user `root` and no password.
-
-To customize, set environment variables:
+### Linux/macOS
 
 ```bash
-export DB_URL="jdbc:mysql://localhost:3306/dormdb?serverTimezone=UTC&useSSL=false"
-export DB_USER="root"
-export DB_PASS="your_password"
+chmod +x compile.sh run.sh
+./compile.sh
+./run.sh
 ```
 
-### 4. Run the Application
+### Windows
 
-```bash
-mvn clean javafx:run
-```
-
-Or export JAVA_HOME first:
-
-```bash
-export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
-mvn clean javafx:run
+```cmd
+compile.bat
+run.bat
 ```
 
 ## Default Login Credentials
 
-- **Admin**: username=`admin`, password=`admin123`
-- **Proctor**: username=`proctor1`, password=`proctor123`
-- **Owner**: username=`owner`, password=`owner123`
-- **Student**: username=`student1`, password=`student123`
+| Role    | Username | Password  |
+|---------|----------|-----------|
+| Admin   | admin    | admin123  |
+| Owner   | owner    | owner123  |
+| Student | student1 | pass1234  |
+
+**Note:** New student passwords must be at least 8 characters.
 
 ## Project Structure
 
 ```
 src/main/java/dorm/
-├── dao/                    # Data Access Objects (interfaces + MySQL implementations)
-│   ├── *Repository.java    # DAO interfaces (ISP, DIP)
-│   ├── MySql*.java         # MySQL implementations
-│   └── DaoFactory.java     # Factory for creating DAOs
-├── model/                  # Domain models
-│   ├── User.java           # Base user class
-│   ├── Student.java        # Student (inherits from User)
-│   ├── Role.java           # User roles enum
-│   ├── ApplicationStatus.java
+├── App.java                 # Main entry point
+├── dao/                     # Data Access Objects
+├── model/                   # Data models
+│   ├── Student.java
+│   ├── Gender.java
+│   ├── College.java         # 9 AAU colleges with full name and acronym
+│   ├── Residency.java       # ADDIS_ABABA, SHEGER_CITY, REGIONAL
+│   ├── SponsorshipType.java # GOVERNMENT, SELF_SPONSORED
 │   └── ...
-├── service/                # Business logic layer
+├── service/
 │   └── DatabaseDormService.java
-├── ui/                     # JavaFX UI components
+├── ui/
 │   ├── LoginViewDb.java
 │   ├── StudentDashboardDb.java
 │   ├── AdminDashboardDb.java
-│   ├── ProctorDashboardDb.java
 │   └── OwnerDashboardDb.java
-├── util/                   # Utilities
-│   ├── Db.java             # Database connection (HikariCP)
-│   └── Validation.java
-└── App.java                # Main application entry point
+└── util/
+    └── CsvHelper.java
+
+data/                        # CSV data files
+├── users.csv
+├── students.csv
+├── applications.csv
+├── announcements.csv
+└── messages.csv
 ```
 
-## File I/O Operations
+## Troubleshooting
 
-1. **Database I/O** - All data persisted to MySQL via JDBC
-2. **CSV Export** - Export student lists to CSV files
-3. **File Upload** - FileChooser for selecting documents and payment slips
-
-## Build & Test
-
-```bash
-# Clean and compile
-mvn clean compile
-
-# Run application
-mvn javafx:run
-
-# Package (optional)
-mvn package
-```
+### JavaFX paths:
+- **Ubuntu/Debian:** `/usr/share/openjfx/lib`
+- **macOS (Homebrew):** `/opt/homebrew/opt/openjfx/libexec/lib`
+- **Windows:** `C:\javafx-sdk-21\lib`
 
 ## License
 

@@ -1,28 +1,60 @@
 package dorm.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Student extends User {
     private final String studentId;
+    private Gender gender;
+    private College college;
+    
+    // Phase One - Address info
+    private Residency residency;
     private String city;
-    private String sponsorshipType;
+    private String subcity;
+    private String woreda;
+    private SponsorshipType sponsorshipType;
     private String disabilityInfo;
-    private final List<String> documentPaths;
-    private String paymentSlipPath;
+    
+    // Phase Two - Emergency contact & payment
+    private String emergencyContactName;
+    private String emergencyContactPhone;
+    private String transactionId;  // for self-sponsored only
+    
+    // Assignment
     private String assignedBuilding;
-    private String entryDate;
-    private String withdrawalDate;
 
-    public Student(String id, String username, String password, String displayName, String studentId, String city) {
+    public Student(String id, String username, String password, String displayName, String studentId, Gender gender, College college) {
         super(id, username, password, Role.STUDENT, displayName);
         this.studentId = studentId;
-        this.city = city;
-        this.documentPaths = new ArrayList<>();
+        this.gender = gender;
+        this.college = college;
+        this.assignedBuilding = "unassigned";
     }
 
     public String getStudentId() {
         return studentId;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
+    }
+
+    public College getCollege() {
+        return college;
+    }
+
+    public void setCollege(College college) {
+        this.college = college;
+    }
+
+    public Residency getResidency() {
+        return residency;
+    }
+
+    public void setResidency(Residency residency) {
+        this.residency = residency;
     }
 
     public String getCity() {
@@ -33,11 +65,27 @@ public class Student extends User {
         this.city = city;
     }
 
-    public String getSponsorshipType() {
+    public String getSubcity() {
+        return subcity;
+    }
+
+    public void setSubcity(String subcity) {
+        this.subcity = subcity;
+    }
+
+    public String getWoreda() {
+        return woreda;
+    }
+
+    public void setWoreda(String woreda) {
+        this.woreda = woreda;
+    }
+
+    public SponsorshipType getSponsorshipType() {
         return sponsorshipType;
     }
 
-    public void setSponsorshipType(String sponsorshipType) {
+    public void setSponsorshipType(SponsorshipType sponsorshipType) {
         this.sponsorshipType = sponsorshipType;
     }
 
@@ -49,22 +97,28 @@ public class Student extends User {
         this.disabilityInfo = disabilityInfo;
     }
 
-    public List<String> getDocumentPaths() {
-        return documentPaths;
+    public String getEmergencyContactName() {
+        return emergencyContactName;
     }
 
-    public void addDocumentPath(String path) {
-        if (path != null && !path.isBlank()) {
-            documentPaths.add(path);
-        }
+    public void setEmergencyContactName(String emergencyContactName) {
+        this.emergencyContactName = emergencyContactName;
     }
 
-    public String getPaymentSlipPath() {
-        return paymentSlipPath;
+    public String getEmergencyContactPhone() {
+        return emergencyContactPhone;
     }
 
-    public void setPaymentSlipPath(String paymentSlipPath) {
-        this.paymentSlipPath = paymentSlipPath;
+    public void setEmergencyContactPhone(String emergencyContactPhone) {
+        this.emergencyContactPhone = emergencyContactPhone;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
     }
 
     public String getAssignedBuilding() {
@@ -73,21 +127,5 @@ public class Student extends User {
 
     public void setAssignedBuilding(String assignedBuilding) {
         this.assignedBuilding = assignedBuilding;
-    }
-
-    public String getEntryDate() {
-        return entryDate;
-    }
-
-    public void setEntryDate(String entryDate) {
-        this.entryDate = entryDate;
-    }
-
-    public String getWithdrawalDate() {
-        return withdrawalDate;
-    }
-
-    public void setWithdrawalDate(String withdrawalDate) {
-        this.withdrawalDate = withdrawalDate;
     }
 }

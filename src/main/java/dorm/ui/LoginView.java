@@ -1,25 +1,25 @@
 package dorm.ui;
 
+import dorm.model.Gender;
 import dorm.model.Role;
 import dorm.model.Student;
 import dorm.model.User;
 import dorm.service.DormService;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.util.Optional;
 
+/**
+ * In-memory login view (demo only).
+ */
 public class LoginView {
     private final DormService service;
     private final Stage stage;
@@ -42,6 +42,7 @@ public class LoginView {
         tab.setClosable(false);
 
         GridPane form = new GridPane();
+        form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
@@ -57,83 +58,105 @@ public class LoginView {
         loginButton.setOnAction(event -> {
             String username = usernameField.getText().trim();
             String password = passwordField.getText().trim();
-            Optional<User> user = service.authenticate(username, password);
-            if (user.isEmpty()) {
-                showAlert("Login Failed", "Invalid username or password.");
+            
+            if (username.isEmpty() || password.isEmpty()) {
+                showAlert("Username and password required");
                 return;
             }
-            switchToDashboard(user.get());
+            
+            Optional<Object> authResult = service.authenticate(username, password);
+            if (authResult.isEmpty()) {
+                showAlert("Invalid credentials");
+                return;
+            }
+            
+            switchToDashboard(authResult.get());
         });
 
-        VBox wrapper = new VBox(10, new Label("Dormitory Management System"), form);
-        wrapper.setPadding(new Insets(20));
+        VBox wrapper = new VBox(form);
+        wrapper.setAlignment(Pos.CENTER);
         tab.setContent(wrapper);
         return tab;
     }
 
     private Tab createRegisterTab() {
-        Tab tab = new Tab("Student Registration");
+        Tab tab = new Tab("Register");
         tab.setClosable(false);
 
         GridPane form = new GridPane();
+        form.setAlignment(Pos.CENTER);
         form.setPadding(new Insets(20));
         form.setHgap(10);
         form.setVgap(10);
 
         TextField fullNameField = new TextField();
         TextField studentIdField = new TextField();
-        TextField cityField = new TextField();
+        ComboBox<Gender> genderBox = new ComboBox<>(FXCollections.observableArrayList(Gender.values()));
         TextField usernameField = new TextField();
         PasswordField passwordField = new PasswordField();
         Button registerButton = new Button("Create Account");
 
         form.addRow(0, new Label("Full Name"), fullNameField);
         form.addRow(1, new Label("Student ID"), studentIdField);
-        form.addRow(2, new Label("City"), cityField);
+        form.addRow(2, new Label("Gender"), genderBox);
         form.addRow(3, new Label("Username"), usernameField);
         form.addRow(4, new Label("Password"), passwordField);
         form.add(registerButton, 1, 5);
 
         registerButton.setOnAction(event -> {
-            if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || cityField.getText().isBlank()
-                    || usernameField.getText().isBlank() || passwordField.getText().isBlank()) {
-                showAlert("Missing Data", "Please fill in all registration fields.");
+            if (fullNameField.getText().isBlank() || studentIdField.getText().isBlank() || 
+                genderBox.getValue() == null || usernameField.getText().isBlank() || 
+                passwordField.getText().isBlank()) {
+                showAlert("All fields required");
                 return;
             }
-            Student student = service.registerStudent(
-                    usernameField.getText().trim(),
-                    passwordField.getText().trim(),
-                    fullNameField.getText().trim(),
-                    studentIdField.getText().trim(),
-                    cityField.getText().trim()
-            );
-            showAlert("Account Created", "Student account created. You can now log in.");
-            switchToDashboard(student);
+            
+            try {
+                Student student = service.registerStudent(
+                        usernameField.getText().trim(),
+                        passwordField.getText().trim(),
+                        fullNameField.getText().trim(),
+                        studentIdField.getText().trim(),
+                        genderBox.getValue()
+                );
+                switchToDashboard(student);
+            } catch (Exception e) {
+                showAlert("Registration failed: " + e.getMessage());
+            }
         });
 
-        VBox wrapper = new VBox(10, new Label("Create Student Account"), form);
-        wrapper.setPadding(new Insets(20));
+        VBox wrapper = new VBox(form);
+        wrapper.setAlignment(Pos.CENTER);
         tab.setContent(wrapper);
         return tab;
     }
 
-    private void switchToDashboard(User user) {
+    private void switchToDashboard(Object authenticated) {
         Scene scene;
-        if (user.getRole() == Role.STUDENT) {
-            scene = new Scene(new StudentDashboard(service, (Student) user).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.ADMIN) {
-            scene = new Scene(new AdminDashboard(service, user).getRoot(), 1100, 700);
-        } else if (user.getRole() == Role.PROCTOR) {
-            scene = new Scene(new ProctorDashboard(service, user).getRoot(), 1100, 700);
+        
+        if (authenticated instanceof Student) {
+            Student student = (Student) authenticated;
+            scene = new Scene(new StudentDashboard(service, student, stage).getRoot(), 1000, 650);
+        } else if (authenticated instanceof User) {
+            User user = (User) authenticated;
+            if (user.getRole() == Role.ADMIN) {
+                scene = new Scene(new AdminDashboard(service, user, stage).getRoot(), 1100, 700);
+            } else if (user.getRole() == Role.OWNER) {
+                scene = new Scene(new OwnerDashboard(service, user, stage).getRoot(), 1100, 700);
+            } else {
+                showAlert("Unknown role");
+                return;
+            }
         } else {
-            scene = new Scene(new OwnerDashboard(service, user).getRoot(), 1100, 700);
+            showAlert("Unknown account type");
+            return;
         }
+        
         stage.setScene(scene);
     }
 
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
+    private void showAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

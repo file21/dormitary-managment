@@ -1,0 +1,3 @@
+id,username,password,role,display_name
+admin-001,admin,admin123,ADMIN,Main Admin
+owner-001,owner,owner123,OWNER,System Owner

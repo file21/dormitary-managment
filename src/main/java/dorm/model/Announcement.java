@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 
 public class Announcement {
     private final String id;
-    private final String title;
-    private final String body;
+    private String title;
+    private String body;
     private final String createdBy;
     private final LocalDateTime createdAt;
 
@@ -25,8 +25,16 @@ public class Announcement {
         return title;
     }
 
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
     public String getBody() {
         return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
     }
 
     public String getCreatedBy() {

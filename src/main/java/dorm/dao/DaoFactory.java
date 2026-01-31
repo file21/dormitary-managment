@@ -2,51 +2,47 @@ package dorm.dao;
 
 /**
  * Factory class for creating DAO instances.
- * 
- * Demonstrates Factory Pattern and Single Responsibility Principle.
- * This class is responsible only for creating and configuring DAO objects.
  */
 public class DaoFactory {
     
-    /**
-     * Creates and returns a configured UserRepository
-     */
+    private static UserRepository userRepository;
+    private static StudentRepository studentRepository;
+    private static ApplicationRepository applicationRepository;
+    private static AnnouncementRepository announcementRepository;
+    private static MessageRepository messageRepository;
+    
     public static UserRepository createUserRepository() {
-        return new MySqlUserRepository();
+        if (userRepository == null) {
+            userRepository = new CsvUserRepository();
+        }
+        return userRepository;
     }
     
-    /**
-     * Creates and returns a configured StudentRepository
-     */
     public static StudentRepository createStudentRepository() {
-        return new MySqlStudentRepository();
+        if (studentRepository == null) {
+            studentRepository = new CsvStudentRepository();
+        }
+        return studentRepository;
     }
     
-    /**
-     * Creates and returns a configured ApplicationRepository
-     */
     public static ApplicationRepository createApplicationRepository() {
-        return new MySqlApplicationRepository(createStudentRepository());
+        if (applicationRepository == null) {
+            applicationRepository = new CsvApplicationRepository(createStudentRepository());
+        }
+        return applicationRepository;
     }
     
-    /**
-     * Creates and returns a configured AnnouncementRepository
-     */
     public static AnnouncementRepository createAnnouncementRepository() {
-        return new MySqlAnnouncementRepository();
+        if (announcementRepository == null) {
+            announcementRepository = new CsvAnnouncementRepository();
+        }
+        return announcementRepository;
     }
     
-    /**
-     * Creates and returns a configured MessageRepository
-     */
     public static MessageRepository createMessageRepository() {
-        return new MySqlMessageRepository();
-    }
-    
-    /**
-     * Creates and returns a configured BuildingAssignmentRepository
-     */
-    public static BuildingAssignmentRepository createBuildingAssignmentRepository() {
-        return new MySqlBuildingAssignmentRepository(createUserRepository());
+        if (messageRepository == null) {
+            messageRepository = new CsvMessageRepository();
+        }
+        return messageRepository;
     }
 }
