@@ -55,13 +55,13 @@ All repository implementations use MySQL via JDBC:
 
 - `README.md` - Updated setup instructions to reference MySQL
 
-### 5. Dependencies (Already Configured)
+### 5. Dependencies (Manual Setup)
 
-`pom.xml` already includes:
-- MySQL Connector/J 8.0.33
-- HikariCP 5.1.0 (connection pooling)
-- JavaFX 21
-- SLF4J (logging)
+This project does not use a build tool. Add these jars manually (e.g., `lib/` folder):
+- MySQL Connector/J
+- HikariCP (connection pooling)
+- JavaFX SDK (module path)
+- SLF4J (slf4j-api + slf4j-simple)
 
 ## Testing the Setup
 

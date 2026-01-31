@@ -303,7 +303,7 @@ Concrete Implementations:
 
 ### 1. Setup MySQL Database
 ```bash
-mysql -u root -p < src/main/resources/sql/simple_schema.sql
+mysql -u root -p < src/main/resources/sql/schema.sql
 ```
 
 ### 2. Configure Database Connection (Optional)
@@ -314,9 +314,19 @@ export DB_USER="root"
 export DB_PASS="your_password"
 ```
 
-### 3. Run the Application
+### 3. Run the Application (Plain javac/java)
 ```bash
-mvn clean javafx:run
+export JAVA_FX_HOME=/path/to/javafx-sdk-21
+javac --module-path "$JAVA_FX_HOME/lib" \
+  --add-modules javafx.controls,javafx.fxml \
+  -cp "lib/*" \
+  -d out \
+  $(find src/main/java -name "*.java")
+
+java --module-path "$JAVA_FX_HOME/lib" \
+  --add-modules javafx.controls,javafx.fxml \
+  -cp "out:lib/*" \
+  dorm.App
 ```
 
 ### Default Login Credentials
